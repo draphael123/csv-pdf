@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV to PDF Converter</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <h1>📄 CSV to PDF Converter</h1>
+            <p class="subtitle">Upload your CSV file and convert it to a beautiful PDF document</p>
+            
+            <form id="uploadForm" class="upload-form">
+                <div class="file-upload-area" id="dropZone">
+                    <input type="file" id="csvFile" accept=".csv" required>
+                    <div class="upload-icon">📁</div>
+                    <p class="upload-text">Click to select a CSV file or drag and drop</p>
+                    <p class="file-name" id="fileName"></p>
+                </div>
+                
+                <button type="submit" class="convert-button" id="convertButton">
+                    <span id="buttonText">Convert to PDF</span>
+                    <span id="buttonLoader" class="loader" style="display: none;"></span>
+                </button>
+            </form>
+            
+            <div id="successMessage" class="success-message" style="display: none;">
+                <div class="success-icon">✅</div>
+                <p>Your PDF has been generated!</p>
+                <a id="downloadLink" href="#" download class="download-button">Download PDF</a>
+            </div>
+            
+            <div id="errorMessage" class="error-message" style="display: none;">
+                <div class="error-icon">❌</div>
+                <p id="errorText"></p>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
+
