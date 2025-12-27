@@ -6,12 +6,20 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 25%, #48dbfb 50%, #ff9ff3 75%, #54a0ff 100%);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .container {
@@ -39,10 +47,22 @@ body {
 }
 
 h1 {
-    color: #333;
+    background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff);
+    background-size: 300% 300%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: textGradient 3s ease infinite;
     font-size: 2.5rem;
     margin-bottom: 10px;
     text-align: center;
+    font-weight: 800;
+}
+
+@keyframes textGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .subtitle {
@@ -57,26 +77,30 @@ h1 {
 }
 
 .file-upload-area {
-    border: 3px dashed #667eea;
-    border-radius: 15px;
+    border: 4px dashed #feca57;
+    border-radius: 20px;
     padding: 40px 20px;
     text-align: center;
-    background: #f8f9ff;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(254, 202, 87, 0.1), rgba(72, 219, 251, 0.1));
     transition: all 0.3s ease;
     cursor: pointer;
     margin-bottom: 20px;
     position: relative;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
 }
 
 .file-upload-area:hover {
-    border-color: #764ba2;
-    background: #f0f2ff;
+    border-color: #ff6b6b;
+    background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(254, 202, 87, 0.2), rgba(72, 219, 251, 0.2));
+    transform: scale(1.02);
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
 }
 
 .file-upload-area.dragover {
-    border-color: #764ba2;
-    background: #e8ebff;
-    transform: scale(1.02);
+    border-color: #48dbfb;
+    background: linear-gradient(135deg, rgba(72, 219, 251, 0.3), rgba(255, 159, 243, 0.3));
+    transform: scale(1.05);
+    box-shadow: 0 10px 30px rgba(72, 219, 251, 0.4);
 }
 
 .file-upload-area input[type="file"] {
@@ -95,15 +119,15 @@ h1 {
 }
 
 .upload-text {
-    color: #667eea;
+    color: #ff6b6b;
     font-size: 1.1rem;
-    font-weight: 500;
+    font-weight: 600;
     margin-bottom: 10px;
 }
 
 .file-name {
-    color: #764ba2;
-    font-weight: 600;
+    color: #54a0ff;
+    font-weight: 700;
     margin-top: 10px;
     font-size: 0.95rem;
 }
@@ -111,23 +135,34 @@ h1 {
 .convert-button {
     width: 100%;
     padding: 15px 30px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #48dbfb 100%);
+    background-size: 200% 200%;
+    animation: buttonGradient 3s ease infinite;
     color: white;
     border: none;
-    border-radius: 12px;
+    border-radius: 15px;
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
+    box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+@keyframes buttonGradient {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 .convert-button:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 10px 30px rgba(255, 107, 107, 0.6);
 }
 
 .convert-button:disabled {
@@ -151,13 +186,19 @@ h1 {
 }
 
 .success-message {
-    background: #d4edda;
-    border: 2px solid #28a745;
-    border-radius: 15px;
-    padding: 25px;
+    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+    border: 3px solid #28a745;
+    border-radius: 20px;
+    padding: 30px;
     text-align: center;
-    animation: slideIn 0.5s ease-out;
+    animation: slideIn 0.5s ease-out, pulse 2s ease-in-out infinite;
     margin-top: 20px;
+    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.3);
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.02); }
 }
 
 @keyframes slideIn {
@@ -176,6 +217,29 @@ h1 {
     margin-bottom: 15px;
 }
 
+.dancing-guy {
+    font-size: 5rem;
+    margin-bottom: 20px;
+    display: inline-block;
+    animation: dance 1s ease-in-out infinite;
+    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
+}
+
+@keyframes dance {
+    0%, 100% { 
+        transform: translateY(0) rotate(-5deg);
+    }
+    25% { 
+        transform: translateY(-10px) rotate(5deg) scale(1.1);
+    }
+    50% { 
+        transform: translateY(-5px) rotate(-5deg);
+    }
+    75% { 
+        transform: translateY(-10px) rotate(5deg) scale(1.1);
+    }
+}
+
 .success-message p {
     color: #155724;
     font-size: 1.2rem;
@@ -185,19 +249,22 @@ h1 {
 
 .download-button {
     display: inline-block;
-    padding: 12px 30px;
-    background: #28a745;
+    padding: 15px 35px;
+    background: linear-gradient(135deg, #28a745, #20c997);
     color: white;
     text-decoration: none;
-    border-radius: 8px;
-    font-weight: 600;
+    border-radius: 12px;
+    font-weight: 700;
     transition: all 0.3s ease;
+    box-shadow: 0 5px 20px rgba(40, 167, 69, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 1px;
 }
 
 .download-button:hover {
-    background: #218838;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    background: linear-gradient(135deg, #218838, #1ea580);
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.5);
 }
 
 .error-message {

@@ -74,65 +74,53 @@ module.exports = async (req, res) => {
     doc.pipe(res);
 
     // Add title
-    doc.fontSize(20).text('CSV to PDF Conversion', { align: 'center' });
-    doc.moveDown();
+    doc.fontSize(24).font('Helvetica-Bold').text('CSV to PDF Conversion', { align: 'center' });
+    doc.moveDown(1);
 
-    // Calculate column widths
-    const pageWidth = doc.page.width - 100; // Margin on both sides
-    const columnCount = headers.length;
-    const columnWidth = Math.max(80, pageWidth / columnCount);
-
-    // Add table headers
-    doc.fontSize(12).font('Helvetica-Bold');
-    let x = 50;
-    headers.forEach(header => {
-      const headerText = String(header).substring(0, 25);
-      doc.text(headerText, x, doc.y, { width: columnWidth - 10, align: 'left' });
-      x += columnWidth;
-    });
-
-    doc.moveDown();
-    doc.moveDown(0.5);
-
-    // Add separator line
-    doc.strokeColor('#cccccc').lineWidth(1).moveTo(50, doc.y).lineTo(pageWidth + 50, doc.y).stroke();
-    doc.moveDown(0.5);
-
-    // Add table rows
-    doc.font('Helvetica').fontSize(10);
-    records.forEach((record, index) => {
-      // Check if we need a new page
-      if (doc.y > doc.page.height - 100) {
+    // Process each record and list each column on separate lines
+    doc.font('Helvetica').fontSize(11);
+    
+    records.forEach((record, recordIndex) => {
+      // Check if we need a new page (leave space for at least 3 columns)
+      if (doc.y > doc.page.height - 150) {
         doc.addPage();
-        // Redraw headers on new page
-        doc.fontSize(12).font('Helvetica-Bold');
-        x = 50;
-        headers.forEach(header => {
-          const headerText = String(header).substring(0, 25);
-          doc.text(headerText, x, doc.y, { width: columnWidth - 10, align: 'left' });
-          x += columnWidth;
-        });
-        doc.moveDown();
-        doc.moveDown(0.5);
-        doc.strokeColor('#cccccc').lineWidth(1).moveTo(50, doc.y).lineTo(pageWidth + 50, doc.y).stroke();
-        doc.moveDown(0.5);
-        doc.font('Helvetica').fontSize(10);
       }
 
-      x = 50;
-      headers.forEach(header => {
-        const value = String(record[header] || '').substring(0, 40);
-        doc.text(value, x, doc.y, { width: columnWidth - 10, align: 'left' });
-        x += columnWidth;
+      // Record header
+      doc.fontSize(14).font('Helvetica-Bold').fillColor('#ff6b6b');
+      doc.text(`Record ${recordIndex + 1}`, { align: 'left' });
+      doc.moveDown(0.5);
+      
+      // Draw a colorful line
+      doc.strokeColor('#feca57').lineWidth(2).moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
+      doc.moveDown(0.8);
+
+      // List each column on a separate line
+      doc.fontSize(11);
+      headers.forEach((header, headerIndex) => {
+        const value = String(record[header] || '(empty)');
+        
+        // Check if we need a new page before adding another line
+        if (doc.y > doc.page.height - 50) {
+          doc.addPage();
+        }
+
+        // Column name (bold) and value on the same line using continued
+        doc.font('Helvetica-Bold').fillColor('#54a0ff');
+        doc.text(`${header}: `, { continued: true });
+        
+        // Column value (regular) - continues on same line
+        doc.font('Helvetica').fillColor('#333333');
+        doc.text(value, { continued: false });
+        
+        doc.moveDown(0.7);
       });
 
-      doc.moveDown();
-
-      // Add separator line every 10 rows for better readability
-      if ((index + 1) % 10 === 0 && index < records.length - 1) {
-        doc.moveDown(0.3);
-        doc.strokeColor('#eeeeee').lineWidth(0.5).moveTo(50, doc.y).lineTo(pageWidth + 50, doc.y).stroke();
-        doc.moveDown(0.5);
+      // Add spacing between records
+      if (recordIndex < records.length - 1) {
+        doc.moveDown(1);
+        doc.strokeColor('#e0e0e0').lineWidth(0.5).moveTo(50, doc.y).lineTo(doc.page.width - 50, doc.y).stroke();
+        doc.moveDown(1);
       }
     });
 
