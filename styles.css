@@ -6,20 +6,12 @@
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 25%, #48dbfb 50%, #ff9ff3 75%, #54a0ff 100%);
-    background-size: 400% 400%;
-    animation: gradientShift 15s ease infinite;
+    background: linear-gradient(135deg, #e8f4f8 0%, #f0f7f4 25%, #f5f0f8 50%, #f8f5f0 75%, #f0f4f8 100%);
     min-height: 100vh;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 20px;
-}
-
-@keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
 }
 
 .container {
@@ -28,11 +20,12 @@ body {
 }
 
 .card {
-    background: white;
+    background: rgba(255, 255, 255, 0.95);
     border-radius: 20px;
     padding: 40px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    animation: fadeIn 0.5s ease-in;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+    animation: fadeIn 0.8s ease-in;
+    backdrop-filter: blur(10px);
 }
 
 @keyframes fadeIn {
@@ -47,29 +40,20 @@ body {
 }
 
 h1 {
-    background: linear-gradient(135deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #54a0ff);
-    background-size: 300% 300%;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: textGradient 3s ease infinite;
+    color: #5a7d8a;
     font-size: 2.5rem;
     margin-bottom: 10px;
     text-align: center;
-    font-weight: 800;
-}
-
-@keyframes textGradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    font-weight: 600;
+    letter-spacing: -0.5px;
 }
 
 .subtitle {
-    color: #666;
+    color: #7a8a95;
     text-align: center;
     margin-bottom: 30px;
     font-size: 1rem;
+    font-weight: 400;
 }
 
 .upload-form {
@@ -77,30 +61,28 @@ h1 {
 }
 
 .file-upload-area {
-    border: 4px dashed #feca57;
-    border-radius: 20px;
+    border: 2px dashed #b8c5cc;
+    border-radius: 16px;
     padding: 40px 20px;
     text-align: center;
-    background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(254, 202, 87, 0.1), rgba(72, 219, 251, 0.1));
-    transition: all 0.3s ease;
+    background: rgba(248, 250, 252, 0.6);
+    transition: all 0.4s ease;
     cursor: pointer;
     margin-bottom: 20px;
     position: relative;
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .file-upload-area:hover {
-    border-color: #ff6b6b;
-    background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(254, 202, 87, 0.2), rgba(72, 219, 251, 0.2));
-    transform: scale(1.02);
-    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.3);
+    border-color: #8fa8b5;
+    background: rgba(248, 250, 252, 0.9);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
 }
 
 .file-upload-area.dragover {
-    border-color: #48dbfb;
-    background: linear-gradient(135deg, rgba(72, 219, 251, 0.3), rgba(255, 159, 243, 0.3));
-    transform: scale(1.05);
-    box-shadow: 0 10px 30px rgba(72, 219, 251, 0.4);
+    border-color: #7a9ba8;
+    background: rgba(240, 247, 252, 0.8);
+    box-shadow: 0 6px 16px rgba(122, 155, 168, 0.15);
 }
 
 .file-upload-area input[type="file"] {
@@ -119,15 +101,15 @@ h1 {
 }
 
 .upload-text {
-    color: #ff6b6b;
+    color: #6b8a9a;
     font-size: 1.1rem;
-    font-weight: 600;
+    font-weight: 500;
     margin-bottom: 10px;
 }
 
 .file-name {
-    color: #54a0ff;
-    font-weight: 700;
+    color: #7a9ba8;
+    font-weight: 500;
     margin-top: 10px;
     font-size: 0.95rem;
 }
@@ -158,9 +140,9 @@ h1 {
 
 .prompt-input:focus {
     outline: none;
-    border-color: #54a0ff;
+    border-color: #8fa8b5;
     background: white;
-    box-shadow: 0 0 0 3px rgba(84, 160, 255, 0.1);
+    box-shadow: 0 0 0 3px rgba(143, 168, 181, 0.1);
 }
 
 .prompt-hint {
@@ -185,34 +167,26 @@ h1 {
 .convert-button {
     width: 100%;
     padding: 15px 30px;
-    background: linear-gradient(135deg, #ff6b6b 0%, #feca57 50%, #48dbfb 100%);
-    background-size: 200% 200%;
-    animation: buttonGradient 3s ease infinite;
+    background: linear-gradient(135deg, #7a9ba8 0%, #8fa8b5 100%);
     color: white;
     border: none;
-    border-radius: 15px;
-    font-size: 1.1rem;
-    font-weight: 700;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 500;
     cursor: pointer;
     transition: all 0.3s ease;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 10px;
-    box-shadow: 0 5px 20px rgba(255, 107, 107, 0.4);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-@keyframes buttonGradient {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    box-shadow: 0 4px 12px rgba(122, 155, 168, 0.25);
+    letter-spacing: 0.5px;
 }
 
 .convert-button:hover:not(:disabled) {
-    transform: translateY(-3px) scale(1.02);
-    box-shadow: 0 10px 30px rgba(255, 107, 107, 0.6);
+    background: linear-gradient(135deg, #6b8a9a 0%, #7a9ba8 100%);
+    box-shadow: 0 6px 16px rgba(122, 155, 168, 0.35);
+    transform: translateY(-1px);
 }
 
 .convert-button:disabled {
@@ -236,19 +210,14 @@ h1 {
 }
 
 .success-message {
-    background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
-    border: 3px solid #28a745;
-    border-radius: 20px;
+    background: rgba(232, 248, 240, 0.8);
+    border: 2px solid #a8d5ba;
+    border-radius: 16px;
     padding: 30px;
     text-align: center;
-    animation: slideIn 0.5s ease-out, pulse 2s ease-in-out infinite;
+    animation: slideIn 0.6s ease-out;
     margin-top: 20px;
-    box-shadow: 0 10px 30px rgba(40, 167, 69, 0.3);
-}
-
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.02); }
+    box-shadow: 0 4px 12px rgba(168, 213, 186, 0.2);
 }
 
 @keyframes slideIn {
@@ -263,77 +232,68 @@ h1 {
 }
 
 .success-icon {
-    font-size: 3rem;
+    font-size: 3.5rem;
     margin-bottom: 15px;
+    color: #7a9ba8;
+    font-weight: 300;
+    line-height: 1;
 }
 
 .dancing-guy {
-    font-size: 5rem;
+    font-size: 4rem;
     margin-bottom: 20px;
     display: inline-block;
-    animation: dance 1s ease-in-out infinite;
-    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.3));
-}
-
-@keyframes dance {
-    0%, 100% { 
-        transform: translateY(0) rotate(-5deg);
-    }
-    25% { 
-        transform: translateY(-10px) rotate(5deg) scale(1.1);
-    }
-    50% { 
-        transform: translateY(-5px) rotate(-5deg);
-    }
-    75% { 
-        transform: translateY(-10px) rotate(5deg) scale(1.1);
-    }
+    opacity: 0.9;
 }
 
 .success-message p {
-    color: #155724;
-    font-size: 1.2rem;
-    font-weight: 600;
+    color: #4a6b5a;
+    font-size: 1.1rem;
+    font-weight: 500;
     margin-bottom: 20px;
 }
 
 .download-button {
     display: inline-block;
-    padding: 15px 35px;
-    background: linear-gradient(135deg, #28a745, #20c997);
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #7a9ba8, #8fa8b5);
     color: white;
     text-decoration: none;
-    border-radius: 12px;
-    font-weight: 700;
+    border-radius: 10px;
+    font-weight: 500;
     transition: all 0.3s ease;
-    box-shadow: 0 5px 20px rgba(40, 167, 69, 0.4);
-    text-transform: uppercase;
-    letter-spacing: 1px;
+    box-shadow: 0 3px 10px rgba(122, 155, 168, 0.3);
+    letter-spacing: 0.5px;
 }
 
 .download-button:hover {
-    background: linear-gradient(135deg, #218838, #1ea580);
-    transform: translateY(-3px) scale(1.05);
-    box-shadow: 0 8px 25px rgba(40, 167, 69, 0.5);
+    background: linear-gradient(135deg, #6b8a9a, #7a9ba8);
+    box-shadow: 0 5px 14px rgba(122, 155, 168, 0.4);
+    transform: translateY(-1px);
 }
 
 .error-message {
-    background: #f8d7da;
-    border: 2px solid #dc3545;
-    border-radius: 15px;
+    background: rgba(255, 240, 240, 0.8);
+    border: 2px solid #d4a5a5;
+    border-radius: 16px;
     padding: 25px;
     text-align: center;
-    animation: slideIn 0.5s ease-out;
+    animation: slideIn 0.6s ease-out;
     margin-top: 20px;
+    box-shadow: 0 4px 12px rgba(212, 165, 165, 0.15);
 }
 
 .error-icon {
-    font-size: 3rem;
+    font-size: 2.5rem;
     margin-bottom: 15px;
+    opacity: 0.7;
+    color: #c49a9a;
+    font-weight: 300;
+    line-height: 1;
 }
 
 .error-message p {
-    color: #721c24;
+    color: #8b6b6b;
     font-size: 1rem;
     font-weight: 500;
 }

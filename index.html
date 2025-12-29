@@ -9,19 +9,19 @@
 <body>
     <div class="container">
         <div class="card">
-            <h1>📄 CSV to PDF Converter</h1>
-            <p class="subtitle">Upload your CSV file and convert it to a beautiful PDF document</p>
+            <h1>CSV to PDF Converter</h1>
+            <p class="subtitle">Transform your data into a beautifully formatted PDF document</p>
             
             <form id="uploadForm" class="upload-form">
                 <div class="file-upload-area" id="dropZone">
                     <input type="file" id="csvFile" accept=".csv" required>
-                    <div class="upload-icon">📁</div>
+                    <div class="upload-icon">📄</div>
                     <p class="upload-text">Click to select a CSV file or drag and drop</p>
                     <p class="file-name" id="fileName"></p>
                 </div>
                 
                 <div class="prompt-section">
-                    <label for="formatPrompt" class="prompt-label">📝 Formatting Instructions (Optional)</label>
+                    <label for="formatPrompt" class="prompt-label">Formatting Instructions (Optional)</label>
                     <textarea 
                         id="formatPrompt" 
                         class="prompt-input" 
@@ -40,14 +40,13 @@
             <p class="feedback-text">If you have any suggestions/requests that would make this tool more helpful please let me know!</p>
             
             <div id="successMessage" class="success-message" style="display: none;">
-                <div class="dancing-guy">🕺</div>
-                <div class="success-icon">✅</div>
-                <p>Your PDF has been generated!</p>
+                <div class="success-icon">✓</div>
+                <p>Your PDF has been generated successfully</p>
                 <a id="downloadLink" href="#" download class="download-button">Download PDF</a>
             </div>
             
             <div id="errorMessage" class="error-message" style="display: none;">
-                <div class="error-icon">❌</div>
+                <div class="error-icon">✕</div>
                 <p id="errorText"></p>
             </div>
         </div>
