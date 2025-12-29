@@ -22,19 +22,27 @@
                 
                 <div class="prompt-section">
                     <label for="formatPrompt" class="prompt-label">Formatting Instructions (Optional)</label>
-                    <textarea 
-                        id="formatPrompt" 
-                        class="prompt-input" 
-                        placeholder="Example: Make it a table format, use landscape orientation, blue headers, larger font size..."
-                        rows="3"
-                    ></textarea>
+                    <div class="prompt-input-wrapper">
+                        <textarea 
+                            id="formatPrompt" 
+                            class="prompt-input" 
+                            placeholder="Example: Make it a table format, use landscape orientation, blue headers, larger font size..."
+                            rows="3"
+                        ></textarea>
+                        <button type="button" class="preview-button" id="previewButton">Preview</button>
+                    </div>
                     <p class="prompt-hint">Describe how you want the PDF formatted (e.g., "table format", "landscape", "blue colors", "larger fonts")</p>
+                    <div id="previewBox" class="preview-box" style="display: none;">
+                        <div class="preview-header">Formatting Preview</div>
+                        <div id="previewContent" class="preview-content"></div>
+                    </div>
                 </div>
                 
                 <button type="submit" class="convert-button" id="convertButton">
-                    <span id="buttonText">Convert to PDF</span>
+                    <span id="buttonText">Convert to PDF with Formatting</span>
                     <span id="buttonLoader" class="loader" style="display: none;"></span>
                 </button>
+                <p class="submit-hint">The formatting instructions above will be applied when you click the button</p>
             </form>
             
             <p class="feedback-text">If you have any suggestions/requests that would make this tool more helpful please let me know!</p>

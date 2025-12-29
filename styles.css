@@ -126,9 +126,15 @@ h1 {
     font-size: 1rem;
 }
 
+.prompt-input-wrapper {
+    position: relative;
+    margin-bottom: 8px;
+}
+
 .prompt-input {
     width: 100%;
     padding: 12px 15px;
+    padding-right: 90px;
     border: 2px solid #e0e0e0;
     border-radius: 12px;
     font-size: 0.95rem;
@@ -145,10 +151,80 @@ h1 {
     box-shadow: 0 0 0 3px rgba(143, 168, 181, 0.1);
 }
 
+.preview-button {
+    position: absolute;
+    right: 8px;
+    top: 8px;
+    padding: 8px 16px;
+    background: rgba(122, 155, 168, 0.1);
+    color: #7a9ba8;
+    border: 1px solid #8fa8b5;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.preview-button:hover {
+    background: rgba(122, 155, 168, 0.2);
+    border-color: #7a9ba8;
+    color: #6b8a9a;
+}
+
+.preview-box {
+    margin-top: 15px;
+    padding: 15px;
+    background: rgba(248, 250, 252, 0.8);
+    border: 1px solid #d0d8dc;
+    border-radius: 12px;
+    animation: slideIn 0.3s ease-out;
+}
+
+.preview-header {
+    font-weight: 600;
+    color: #5a7d8a;
+    margin-bottom: 12px;
+    font-size: 0.95rem;
+}
+
+.preview-content {
+    color: #4a5a65;
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.preview-item {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.6);
+    border-radius: 6px;
+}
+
+.preview-label {
+    font-weight: 600;
+    color: #6b8a9a;
+    display: inline-block;
+    min-width: 120px;
+}
+
+.preview-value {
+    color: #4a5a65;
+}
+
 .prompt-hint {
     color: #666;
     font-size: 0.85rem;
     margin-top: 8px;
+    font-style: italic;
+}
+
+.submit-hint {
+    text-align: center;
+    color: #7a8a95;
+    font-size: 0.85rem;
+    margin-top: 12px;
+    margin-bottom: 0;
     font-style: italic;
 }
 
