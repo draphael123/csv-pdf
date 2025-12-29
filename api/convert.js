@@ -104,23 +104,37 @@ function parseFormatPrompt(prompt) {
   };
 
   // Parse colors with context
-  for (const [colorName, colorHex] of Object.entries(colorMap)) {
+  // Sort by length (longest first) to match multi-word colors first
+  const sortedColors = Object.entries(colorMap).sort((a, b) => b[0].length - a[0].length);
+  
+  let headerColorSet = false;
+  let textColorSet = false;
+  
+  for (const [colorName, colorHex] of sortedColors) {
+    // Simple includes check - works for both single and multi-word colors
     if (lowerPrompt.includes(colorName)) {
-      // Check for specific context
-      if (lowerPrompt.includes('header') || lowerPrompt.includes('title') || 
-          lowerPrompt.includes('heading')) {
+      // Check for specific context - prioritize explicit mentions
+      if ((lowerPrompt.includes('header') || lowerPrompt.includes('title') || 
+          lowerPrompt.includes('heading') || lowerPrompt.includes('head')) && !headerColorSet) {
         options.headerColor = colorHex;
         options.colors.primary = colorHex;
-      } else if (lowerPrompt.includes('text') || lowerPrompt.includes('content') ||
-                 lowerPrompt.includes('body') || lowerPrompt.includes('paragraph')) {
+        options.colors.accent = colorHex;
+        headerColorSet = true;
+      } else if ((lowerPrompt.includes('text') || lowerPrompt.includes('content') ||
+                 lowerPrompt.includes('body') || lowerPrompt.includes('paragraph')) && !textColorSet) {
         options.textColor = colorHex;
+        textColorSet = true;
       } else if (lowerPrompt.includes('background') || lowerPrompt.includes('bg')) {
         // Background color (if we add this feature)
         options.colors.secondary = colorHex;
-      } else {
-        // Default to primary color if not specified
+      } else if (!headerColorSet) {
+        // Default to primary color if not specified and header not already set
         options.colors.primary = colorHex;
         options.headerColor = colorHex;
+        // Also update accent if it's a general color mention
+        if (!lowerPrompt.includes('accent')) {
+          options.colors.accent = colorHex;
+        }
       }
     }
   }
@@ -295,17 +309,21 @@ module.exports = async (req, res) => {
         }
       });
 
-      busboy.on('field', (name, value) => {
+      busboy.on('field', (name, value, info) => {
+        console.log('Received field:', name, 'Value:', value);
         if (name === 'formatPrompt') {
           formatPrompt = value;
+          console.log('Set formatPrompt to:', formatPrompt);
         }
       });
 
       busboy.on('finish', () => {
+        console.log('Busboy finished parsing. formatPrompt:', formatPrompt);
         resolve();
       });
 
       busboy.on('error', (err) => {
+        console.error('Busboy error:', err);
         reject(err);
       });
 
@@ -317,6 +335,10 @@ module.exports = async (req, res) => {
     if (!fileReceived || !csvContent) {
       return res.status(400).json({ error: 'No CSV file provided or file is empty' });
     }
+
+    // Debug: Log received prompt
+    console.log('Received formatPrompt:', formatPrompt);
+    console.log('FormatPrompt length:', formatPrompt ? formatPrompt.length : 0);
 
     // Parse CSV
     const records = parse(csvContent, {
@@ -334,6 +356,9 @@ module.exports = async (req, res) => {
 
     // Parse formatting prompt
     const formatOptions = parseFormatPrompt(formatPrompt);
+    
+    // Debug: Log parsed options
+    console.log('Parsed format options:', JSON.stringify(formatOptions, null, 2));
 
     // Create PDF document with parsed orientation
     const doc = new PDFDocument({ 
