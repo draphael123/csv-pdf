@@ -20,11 +20,24 @@
                     <p class="file-name" id="fileName"></p>
                 </div>
                 
+                <div class="prompt-section">
+                    <label for="formatPrompt" class="prompt-label">📝 Formatting Instructions (Optional)</label>
+                    <textarea 
+                        id="formatPrompt" 
+                        class="prompt-input" 
+                        placeholder="Example: Make it a table format, use landscape orientation, blue headers, larger font size..."
+                        rows="3"
+                    ></textarea>
+                    <p class="prompt-hint">Describe how you want the PDF formatted (e.g., "table format", "landscape", "blue colors", "larger fonts")</p>
+                </div>
+                
                 <button type="submit" class="convert-button" id="convertButton">
                     <span id="buttonText">Convert to PDF</span>
                     <span id="buttonLoader" class="loader" style="display: none;"></span>
                 </button>
             </form>
+            
+            <p class="feedback-text">If you have any suggestions/requests that would make this tool more helpful please let me know!</p>
             
             <div id="successMessage" class="success-message" style="display: none;">
                 <div class="dancing-guy">🕺</div>

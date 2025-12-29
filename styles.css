@@ -132,6 +132,56 @@ h1 {
     font-size: 0.95rem;
 }
 
+.prompt-section {
+    margin-bottom: 20px;
+}
+
+.prompt-label {
+    display: block;
+    color: #333;
+    font-weight: 600;
+    margin-bottom: 10px;
+    font-size: 1rem;
+}
+
+.prompt-input {
+    width: 100%;
+    padding: 12px 15px;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-family: inherit;
+    resize: vertical;
+    transition: all 0.3s ease;
+    background: #fafafa;
+}
+
+.prompt-input:focus {
+    outline: none;
+    border-color: #54a0ff;
+    background: white;
+    box-shadow: 0 0 0 3px rgba(84, 160, 255, 0.1);
+}
+
+.prompt-hint {
+    color: #666;
+    font-size: 0.85rem;
+    margin-top: 8px;
+    font-style: italic;
+}
+
+.feedback-text {
+    text-align: center;
+    color: #666;
+    font-size: 0.9rem;
+    margin-top: 30px;
+    margin-bottom: 20px;
+    font-style: italic;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.5);
+    border-radius: 10px;
+}
+
 .convert-button {
     width: 100%;
     padding: 15px 30px;

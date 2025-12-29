@@ -1,5 +1,6 @@
 const uploadForm = document.getElementById('uploadForm');
 const csvFileInput = document.getElementById('csvFile');
+const formatPrompt = document.getElementById('formatPrompt');
 const dropZone = document.getElementById('dropZone');
 const fileName = document.getElementById('fileName');
 const convertButton = document.getElementById('convertButton');
@@ -67,6 +68,7 @@ uploadForm.addEventListener('submit', async (e) => {
     try {
         const formData = new FormData();
         formData.append('csvFile', file);
+        formData.append('formatPrompt', formatPrompt.value.trim());
         
         const response = await fetch('/api/convert', {
             method: 'POST',
@@ -120,6 +122,7 @@ function hideMessages() {
 
 function resetForm() {
     csvFileInput.value = '';
+    formatPrompt.value = '';
     fileName.textContent = '';
     fileName.style.display = 'none';
 }
