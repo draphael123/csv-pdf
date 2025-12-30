@@ -382,6 +382,111 @@ document.querySelectorAll('.example-btn').forEach(btn => {
     });
 });
 
+// Submit Request button - Apply formatting prompt to UI controls
+const submitRequestBtn = document.getElementById('submitRequestBtn');
+if (submitRequestBtn) {
+    submitRequestBtn.addEventListener('click', () => {
+        const prompt = formatPrompt.value.trim();
+        
+        if (!prompt) {
+            showError('Please enter a formatting request first.');
+            return;
+        }
+        
+        // Parse the prompt
+        const parsedOptions = parseFormatPrompt(prompt);
+        
+        // Apply parsed options to UI controls
+        if (parsedOptions.layout) {
+            document.getElementById('layoutType').value = parsedOptions.layout;
+        }
+        
+        if (parsedOptions.orientation) {
+            document.getElementById('orientation').value = parsedOptions.orientation;
+        }
+        
+        if (parsedOptions.fontSize) {
+            document.getElementById('fontSize').value = parsedOptions.fontSize;
+        }
+        
+        if (parsedOptions.headerColor) {
+            document.getElementById('headerColor').value = parsedOptions.headerColor;
+        }
+        
+        if (parsedOptions.textColor) {
+            document.getElementById('textColor').value = parsedOptions.textColor;
+        }
+        
+        // Apply advanced options
+        if (parsedOptions.customHeader) {
+            document.getElementById('headerText').value = parsedOptions.customHeader;
+        }
+        
+        if (parsedOptions.customFooter) {
+            document.getElementById('footerText').value = parsedOptions.customFooter;
+        }
+        
+        if (parsedOptions.showPageNumbers !== undefined) {
+            document.getElementById('showPageNumbers').checked = parsedOptions.showPageNumbers;
+        }
+        
+        if (parsedOptions.showDate !== undefined) {
+            document.getElementById('showDate').checked = parsedOptions.showDate;
+        }
+        
+        if (parsedOptions.calculateTotals !== undefined) {
+            document.getElementById('calculateTotals').checked = parsedOptions.calculateTotals;
+        }
+        
+        if (parsedOptions.calculateAverages !== undefined) {
+            document.getElementById('calculateAverages').checked = parsedOptions.calculateAverages;
+        }
+        
+        if (parsedOptions.alternatingRows !== undefined) {
+            document.getElementById('alternatingRows').checked = parsedOptions.alternatingRows;
+        }
+        
+        if (parsedOptions.borderStyle) {
+            document.getElementById('borderStyle').value = parsedOptions.borderStyle;
+        }
+        
+        if (parsedOptions.customTitle) {
+            document.getElementById('pdfTitle').value = parsedOptions.customTitle;
+        }
+        
+        // Show success feedback
+        const btnSpan = submitRequestBtn.querySelector('span');
+        const originalBtnText = submitRequestBtn.textContent;
+        submitRequestBtn.innerHTML = '<span>✓</span> Applied!';
+        submitRequestBtn.classList.add('submitted');
+        
+        // Show preview
+        showPreview();
+        
+        // Show success message
+        hideMessages();
+        const successMsg = document.createElement('div');
+        successMsg.className = 'success-message';
+        successMsg.style.display = 'block';
+        successMsg.style.marginTop = '15px';
+        successMsg.innerHTML = `
+            <div class="success-icon">✓</div>
+            <p>Formatting request applied successfully! Settings have been updated.</p>
+        `;
+        submitRequestBtn.parentElement.appendChild(successMsg);
+        
+        // Reset button and remove message after 3 seconds
+        setTimeout(() => {
+            submitRequestBtn.innerHTML = '<span>✓</span> Submit Request';
+            submitRequestBtn.classList.remove('submitted');
+            successMsg.remove();
+        }, 3000);
+        
+        // Scroll to show the applied settings
+        document.getElementById('formatTab').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+}
+
 function showError(message) {
     errorText.textContent = message;
     errorMessage.style.display = 'block';

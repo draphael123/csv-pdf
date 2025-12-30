@@ -471,6 +471,58 @@ h1 {
     transform: translateY(-1px);
 }
 
+.submit-request-section {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(255, 68, 68, 0.05);
+    border-radius: 8px;
+    border: 2px dashed rgba(255, 68, 68, 0.3);
+    text-align: center;
+}
+
+.submit-request-btn {
+    padding: 12px 30px;
+    background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 12px rgba(255, 68, 68, 0.4);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.submit-request-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 68, 68, 0.6);
+    background: linear-gradient(135deg, #cc0000 0%, #ff4444 100%);
+}
+
+.submit-request-btn:active {
+    transform: translateY(0);
+}
+
+.submit-request-btn.submitted {
+    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%);
+    box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.submit-request-btn span {
+    font-size: 1.2rem;
+    display: inline-block;
+}
+
+.submit-request-hint {
+    margin-top: 10px;
+    color: #666;
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
 .export-import-section {
     margin-top: 20px;
     padding: 15px;
