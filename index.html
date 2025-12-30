@@ -288,6 +288,13 @@
                         <input type="radio" id="downloadSeparate" name="downloadType" value="separate">
                         <label for="downloadSeparate">Separate PDFs (ZIP)</label>
                     </div>
+                    <div class="option-radio">
+                        <input type="radio" id="downloadPerEntry" name="downloadType" value="perEntry">
+                        <label for="downloadPerEntry">One PDF per row/entry (ZIP)</label>
+                    </div>
+                    <p class="option-hint" id="perEntryHint" style="display: none; margin-top: 10px; color: #666; font-size: 0.85rem;">
+                        Each row in your CSV will become a separate PDF file. Useful for generating individual documents (e.g., invoices, certificates) for each entry.
+                    </p>
                 </div>
                 <div class="custom-filename" id="customFilename" style="display: none;">
                     <label for="pdfFilename">Custom PDF Filename (optional):</label>

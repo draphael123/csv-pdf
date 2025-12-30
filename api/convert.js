@@ -280,6 +280,124 @@ function parseFormatPrompt(prompt) {
   return options;
 }
 
+// Generate one PDF per entry/row
+async function generatePerEntryPDFs(records, headers, options, res, customFilename) {
+  const archive = archiver('zip', { zlib: { level: 9 } });
+  
+  res.setHeader('Content-Type', 'application/zip');
+  const zipFilename = customFilename ? `${customFilename}.zip` : `pdfs_per_entry_${Date.now()}.zip`;
+  res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
+  
+  archive.pipe(res);
+  
+  // Generate a PDF for each record
+  for (let i = 0; i < records.length; i++) {
+    const record = records[i];
+    
+    // Create a new PDF for this record
+    const doc = new PDFDocument({
+      margin: options.margin || 50,
+      size: options.orientation === 'landscape' ? [792, 612] : [612, 792],
+      info: {
+        Title: options.advanced?.metadata?.title || `Entry ${i + 1}`,
+        Author: options.advanced?.metadata?.author || '',
+        Subject: options.advanced?.metadata?.subject || '',
+        Keywords: options.advanced?.metadata?.keywords?.join(', ') || ''
+      }
+    });
+    
+    // Apply password protection if requested
+    if (options.advanced?.password) {
+      doc.encrypt({
+        userPassword: options.advanced.password,
+        ownerPassword: options.advanced.password,
+        userPermissions: ['print', 'modify', 'copy', 'annotate']
+      });
+    }
+    
+    // Collect PDF data
+    const pdfChunks = [];
+    doc.on('data', chunk => pdfChunks.push(chunk));
+    
+    // Helper function to add headers/footers for this entry
+    const addHeaderFooter = (pageNum, totalPages) => {
+      const pageWidth = doc.page.width;
+      const pageHeight = doc.page.height;
+      
+      if (options.advanced?.header) {
+        doc.fontSize(10)
+           .fillColor(options.textColor || '#4a5a65')
+           .text(options.advanced.header, 50, 30, { width: pageWidth - 100, align: 'left' });
+      }
+      
+      let footerText = '';
+      if (options.advanced?.footer) {
+        footerText = options.advanced.footer;
+      }
+      if (options.advanced?.showDate) {
+        footerText += (footerText ? ' | ' : '') + new Date().toLocaleDateString();
+      }
+      if (options.advanced?.showPageNumbers) {
+        footerText += (footerText ? ' | ' : '') + `Page ${pageNum} of ${totalPages}`;
+      }
+      
+      if (footerText) {
+        doc.fontSize(9)
+           .fillColor(options.textColor || '#4a5a65')
+           .text(footerText, 50, pageHeight - 30, { width: pageWidth - 100, align: 'center' });
+      }
+    };
+    
+    // Add title
+    const title = options.advanced?.metadata?.title || `Entry ${i + 1}`;
+    doc.fontSize(options.titleSize || 24)
+       .font('Helvetica-Bold')
+       .fillColor(options.colors?.primary || options.headerColor || '#ff4444')
+       .text(title, { align: 'center' });
+    doc.moveDown(1);
+    
+    // Generate content for this single record
+    const singleRecordArray = [record];
+    
+    if (options.useTable) {
+      generateTableLayout(doc, singleRecordArray, headers, options, addHeaderFooter);
+    } else {
+      generateListLayout(doc, singleRecordArray, headers, options, addHeaderFooter);
+    }
+    
+    // Wait for PDF to finish and add to archive
+    await new Promise((resolve) => {
+      doc.on('end', () => {
+        const pdfBuffer = Buffer.concat(pdfChunks);
+        
+        // Generate filename for this entry
+        let entryFilename = `entry_${i + 1}.pdf`;
+        if (customFilename) {
+          entryFilename = `${customFilename}_${i + 1}.pdf`;
+        } else {
+          // Try to use a meaningful field as filename (e.g., name, id, etc.)
+          const nameFields = ['name', 'id', 'title', 'filename', 'document'];
+          for (const field of nameFields) {
+            if (record[field] && typeof record[field] === 'string') {
+              const cleanName = record[field].replace(/[^a-z0-9]/gi, '_').substring(0, 50);
+              entryFilename = `${cleanName}.pdf`;
+              break;
+            }
+          }
+        }
+        
+        archive.append(pdfBuffer, { name: entryFilename });
+        resolve();
+      });
+      
+      doc.end();
+    });
+  }
+  
+  // Finalize the ZIP archive
+  archive.finalize();
+}
+
 // Helper function to add calculations (totals/averages)
 function addCalculations(doc, headers, records, options, margin, startY) {
   if (!options.advanced?.calculations) return;
@@ -605,12 +723,9 @@ module.exports = async (req, res) => {
         } else if (name === 'options') {
           try {
             const parsed = JSON.parse(value);
-            if (typeof formatPrompt === 'object') {
-              Object.assign(formatPrompt, parsed);
-            } else {
-              formatPrompt = parsed;
-            }
-            console.log('Received JSON options');
+            // Store the entire options object
+            formatPrompt = parsed;
+            console.log('Received JSON options:', Object.keys(parsed));
           } catch (e) {
             console.log('Options not JSON, using as prompt');
             formatPrompt = value;
@@ -721,12 +836,16 @@ module.exports = async (req, res) => {
     let options = {};
     let headers = Array.from(allHeadersSet); // Use union of all headers
     let promptText = '';
+    let downloadType = 'combined';
+    let customFilename = '';
     
     // Extract formatPrompt from options object if it exists
     if (typeof formatPrompt === 'object' && formatPrompt !== null) {
       // formatPrompt is the entire options object
       options = formatPrompt;
       promptText = options.formatPrompt || '';
+      downloadType = options.downloadType || 'combined';
+      customFilename = options.customFilename || '';
       
       // Use provided data if available (note: we already have allRecords from file parsing)
       // The filteredData from options would override, but we'll keep the parsed file data
@@ -741,6 +860,8 @@ module.exports = async (req, res) => {
       try {
         options = JSON.parse(formatPrompt);
         promptText = options.formatPrompt || '';
+        downloadType = options.downloadType || 'combined';
+        customFilename = options.customFilename || '';
         // Use provided data if available (note: we already have allRecords from file parsing)
         if (options.selectedColumns && Array.isArray(options.selectedColumns) && options.selectedColumns.length > 0) {
           // Only use selected columns that exist in the data
@@ -761,47 +882,125 @@ module.exports = async (req, res) => {
     // Parse the prompt text to extract formatting options
     const parsedPromptOptions = parseFormatPrompt(promptText);
     
-    // Merge parsed prompt options with UI options (UI options take precedence)
-    options = {
-      ...parsedPromptOptions,
-      ...options,
-      // Preserve UI settings that were explicitly set
-      layout: options.layout || parsedPromptOptions.layout,
-      orientation: options.orientation || parsedPromptOptions.orientation,
-      fontSize: options.fontSize || parsedPromptOptions.fontSize,
-      headerColor: options.headerColor || parsedPromptOptions.headerColor,
-      textColor: options.textColor || parsedPromptOptions.textColor,
+    // Merge parsed prompt options with UI options
+    // Start with UI options, then apply prompt options (prompt takes precedence when provided)
+    const finalOptions = {
+      ...options, // Start with UI options as base
+      // Merge colors properly
       colors: {
         ...parsedPromptOptions.colors,
         ...(options.colors || {})
+      },
+      // Merge advanced options - start with UI advanced, then add prompt options
+      advanced: {
+        ...(options.advanced || {}),
+        // Prompt options can add to advanced settings
       }
     };
     
-    // Merge UI options with parsed options
-    if (options.layout) {
-      options.useTable = options.layout === 'table';
+    // Apply prompt-specific options (these should override UI if prompt was provided)
+    if (promptText.trim()) {
+      // Prompt was provided, so use parsed prompt options to override UI options
+      if (parsedPromptOptions.layout) {
+        finalOptions.layout = parsedPromptOptions.layout;
+        finalOptions.useTable = parsedPromptOptions.layout === 'table';
+      }
+      if (parsedPromptOptions.orientation) finalOptions.orientation = parsedPromptOptions.orientation;
+      if (parsedPromptOptions.fontSize) {
+        finalOptions.fontSize = parsedPromptOptions.fontSize;
+        finalOptions.titleSize = Math.max(parsedPromptOptions.fontSize * 2, 20);
+      }
+      if (parsedPromptOptions.headerColor) {
+        finalOptions.headerColor = parsedPromptOptions.headerColor;
+        finalOptions.colors.primary = parsedPromptOptions.headerColor;
+      }
+      if (parsedPromptOptions.textColor) finalOptions.textColor = parsedPromptOptions.textColor;
+      if (parsedPromptOptions.margin) finalOptions.margin = parsedPromptOptions.margin;
+      if (parsedPromptOptions.showPageNumbers !== undefined) {
+        if (!finalOptions.advanced) finalOptions.advanced = {};
+        finalOptions.advanced.showPageNumbers = parsedPromptOptions.showPageNumbers;
+      }
+      if (parsedPromptOptions.showDate !== undefined) {
+        if (!finalOptions.advanced) finalOptions.advanced = {};
+        finalOptions.advanced.showDate = parsedPromptOptions.showDate;
+      }
+      if (parsedPromptOptions.customHeader) {
+        if (!finalOptions.advanced) finalOptions.advanced = {};
+        finalOptions.advanced.header = parsedPromptOptions.customHeader;
+      }
+      if (parsedPromptOptions.customFooter) {
+        if (!finalOptions.advanced) finalOptions.advanced = {};
+        finalOptions.advanced.footer = parsedPromptOptions.customFooter;
+      }
+      if (parsedPromptOptions.calculateTotals !== undefined) {
+        if (!finalOptions.advanced) finalOptions.advanced = {};
+        if (!finalOptions.advanced.calculations) finalOptions.advanced.calculations = {};
+        finalOptions.advanced.calculations.totals = parsedPromptOptions.calculateTotals;
+      }
+      if (parsedPromptOptions.calculateAverages !== undefined) {
+        if (!finalOptions.advanced) finalOptions.advanced = {};
+        if (!finalOptions.advanced.calculations) finalOptions.advanced.calculations = {};
+        finalOptions.advanced.calculations.averages = parsedPromptOptions.calculateAverages;
+      }
+      if (parsedPromptOptions.alternatingRows !== undefined) {
+        if (!finalOptions.advanced) finalOptions.advanced = {};
+        if (!finalOptions.advanced.table) finalOptions.advanced.table = {};
+        finalOptions.advanced.table.alternatingRows = parsedPromptOptions.alternatingRows;
+      }
+      if (parsedPromptOptions.borderStyle) {
+        if (!finalOptions.advanced) finalOptions.advanced = {};
+        if (!finalOptions.advanced.table) finalOptions.advanced.table = {};
+        finalOptions.advanced.table.borderStyle = parsedPromptOptions.borderStyle;
+      }
+      if (parsedPromptOptions.customTitle) {
+        if (!finalOptions.advanced) finalOptions.advanced = {};
+        if (!finalOptions.advanced.metadata) finalOptions.advanced.metadata = {};
+        finalOptions.advanced.metadata.title = parsedPromptOptions.customTitle;
+      }
     }
-    if (options.orientation) {
-      options.orientation = options.orientation;
+    
+    // Use UI options as fallback if prompt wasn't provided
+    if (!promptText.trim()) {
+      if (options.layout) finalOptions.layout = options.layout;
+      if (options.orientation) finalOptions.orientation = options.orientation;
+      if (options.fontSize) finalOptions.fontSize = parseInt(options.fontSize) || options.fontSize;
+      if (options.headerColor) finalOptions.headerColor = options.headerColor;
+      if (options.textColor) finalOptions.textColor = options.textColor;
     }
-    if (options.fontSize) {
-      options.fontSize = parseInt(options.fontSize) || options.fontSize;
-      options.titleSize = Math.max(options.fontSize * 2, 20);
+    
+    // Set useTable based on layout
+    if (finalOptions.layout) {
+      finalOptions.useTable = finalOptions.layout === 'table';
     }
-    if (options.headerColor) {
-      options.colors = options.colors || {};
-      options.colors.primary = options.headerColor;
+    
+    // Ensure fontSize and titleSize are numbers
+    if (finalOptions.fontSize) {
+      finalOptions.fontSize = parseInt(finalOptions.fontSize) || finalOptions.fontSize;
+      finalOptions.titleSize = Math.max(finalOptions.fontSize * 2, 20);
     }
-    if (options.textColor) {
-      options.textColor = options.textColor;
+    
+    // Update colors from headerColor
+    if (finalOptions.headerColor) {
+      finalOptions.colors = finalOptions.colors || {};
+      finalOptions.colors.primary = finalOptions.headerColor;
     }
+    
+    options = finalOptions;
     
     // Debug: Log parsed options
     console.log('Final format options:', JSON.stringify(options, null, 2));
+    console.log('Download type:', downloadType);
+    console.log('Prompt text received:', promptText);
+    console.log('Parsed prompt options:', JSON.stringify(parsedPromptOptions, null, 2));
+
+    // Handle per-entry PDF generation
+    if (downloadType === 'perEntry') {
+      return await generatePerEntryPDFs(allRecords, headers, options, res, customFilename);
+    }
 
     // Create PDF document with parsed orientation
     const doc = new PDFDocument({ 
-      margin: 50,
+      margin: options.margin || 50,
       size: options.orientation === 'landscape' ? [792, 612] : [612, 792],
       info: {
         Title: options.advanced?.metadata?.title || 'CSV to PDF Conversion',
@@ -822,7 +1021,8 @@ module.exports = async (req, res) => {
     
     // Set response headers
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', 'attachment; filename="converted.pdf"');
+    const filename = customFilename || 'converted.pdf';
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
     // Pipe PDF to response
     doc.pipe(res);

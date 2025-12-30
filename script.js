@@ -1175,11 +1175,18 @@ uploadForm.addEventListener('submit', async (e) => {
     setLoadingState(true);
     updateProgress(10, 'Starting conversion...');
     
-    // Show download options if multiple files
-    if (files.length > 1) {
-        document.getElementById('downloadOptions').style.display = 'block';
-    }
+    // Show download options
+    document.getElementById('downloadOptions').style.display = 'block';
     document.getElementById('customFilename').style.display = 'block';
+    
+    // Show per-entry option hint when selected
+    const downloadTypeRadios = document.querySelectorAll('input[name="downloadType"]');
+    downloadTypeRadios.forEach(radio => {
+        radio.addEventListener('change', () => {
+            const hint = document.getElementById('perEntryHint');
+            hint.style.display = radio.value === 'perEntry' ? 'block' : 'none';
+        });
+    });
     
     try {
         const downloadType = document.querySelector('input[name="downloadType"]:checked')?.value || 'combined';
@@ -1250,10 +1257,14 @@ uploadForm.addEventListener('submit', async (e) => {
         let blob, downloadUrl, filename;
         
         if (contentType && contentType.includes('application/zip')) {
-            // Separate PDFs in ZIP
+            // ZIP file (separate PDFs or per-entry PDFs)
             blob = await response.blob();
             downloadUrl = window.URL.createObjectURL(blob);
-            filename = customFilename ? `${customFilename}.zip` : `pdf_files_${Date.now()}.zip`;
+            if (downloadType === 'perEntry') {
+                filename = customFilename ? `${customFilename}.zip` : `pdfs_per_entry_${Date.now()}.zip`;
+            } else {
+                filename = customFilename ? `${customFilename}.zip` : `pdf_files_${Date.now()}.zip`;
+            }
         } else {
             // Combined PDF
             blob = await response.blob();
