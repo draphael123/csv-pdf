@@ -1208,7 +1208,7 @@ body.dark-mode .dark-mode-toggle:hover {
 .conversion-history {
     margin-top: 30px;
     padding: 20px;
-    background: rgba(102, 126, 234, 0.05);
+    background: rgba(255, 68, 68, 0.05);
     border-radius: 12px;
 }
 
@@ -1228,11 +1228,124 @@ body.dark-mode .dark-mode-toggle:hover {
     border: 1px solid rgba(102, 126, 234, 0.2);
 }
 
+/* Usage Instructions */
+.usage-instructions {
+    margin-top: 40px;
+    padding: 25px;
+    background: linear-gradient(135deg, rgba(255, 68, 68, 0.05) 0%, rgba(255, 136, 136, 0.05) 100%);
+    border-radius: 12px;
+    border: 2px solid rgba(255, 68, 68, 0.2);
+}
+
+.usage-instructions h3 {
+    color: #cc0000;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.usage-instructions h3::before {
+    content: "📖";
+    font-size: 1.5rem;
+}
+
+.steps-list {
+    list-style: none;
+    counter-reset: step-counter;
+    padding: 0;
+    margin: 0 0 20px 0;
+}
+
+.steps-list li {
+    counter-increment: step-counter;
+    margin-bottom: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border-left: 4px solid #ff4444;
+    position: relative;
+    padding-left: 50px;
+    box-shadow: 0 2px 8px rgba(255, 68, 68, 0.1);
+    transition: all 0.3s ease;
+}
+
+.steps-list li:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 12px rgba(255, 68, 68, 0.2);
+}
+
+.steps-list li::before {
+    content: counter(step-counter);
+    position: absolute;
+    left: 15px;
+    top: 15px;
+    background: linear-gradient(135deg, #ff4444 0%, #cc0000 100%);
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 0.9rem;
+}
+
+.steps-list li strong {
+    color: #cc0000;
+    font-size: 1.05rem;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.steps-list li ul {
+    margin-top: 10px;
+    margin-left: 20px;
+    list-style-type: disc;
+    color: #4a5a65;
+}
+
+.steps-list li ul li {
+    margin-bottom: 8px;
+    padding: 5px 0;
+    background: transparent;
+    border: none;
+    padding-left: 0;
+    box-shadow: none;
+    counter-increment: none;
+}
+
+.steps-list li ul li::before {
+    display: none;
+}
+
+.steps-list li ul li:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.tips-note {
+    background: rgba(255, 68, 68, 0.1);
+    padding: 15px;
+    border-radius: 8px;
+    border-left: 4px solid #ff4444;
+    color: #4a5a65;
+    margin-top: 20px;
+    line-height: 1.6;
+}
+
+.tips-note strong {
+    color: #cc0000;
+}
+
 /* Batch Upload */
 .batch-upload {
     margin-top: 15px;
     padding: 15px;
-    background: rgba(102, 126, 234, 0.05);
+    background: rgba(255, 68, 68, 0.05);
     border-radius: 12px;
 }
 
