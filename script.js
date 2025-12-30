@@ -545,7 +545,7 @@ function showPreview() {
     if (!prompt) {
         previewBox.style.display = 'none';
         // Reset preview box styles
-        previewBox.style.borderColor = '#667eea';
+        previewBox.style.borderColor = '#ff4444';
         previewBox.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(240, 147, 251, 0.1) 100%)';
         return;
     }
@@ -1085,7 +1085,7 @@ function applyTemplate(template) {
     document.getElementById('layoutType').value = template.layout || 'list';
     document.getElementById('orientation').value = template.orientation || 'portrait';
     document.getElementById('fontSize').value = template.fontSize || 11;
-    document.getElementById('headerColor').value = template.headerColor || '#667eea';
+    document.getElementById('headerColor').value = template.headerColor || '#ff4444';
     document.getElementById('textColor').value = template.textColor || '#4a5a65';
     
     if (template.advanced) {

@@ -6,11 +6,11 @@ const archiver = require('archiver');
 
 // Parse formatting prompt to extract preferences
 function parseFormatPrompt(prompt) {
-  // Calmer, zen default colors
+  // Red theme default colors
   const defaultColors = {
-    primary: '#7a9ba8',
-    secondary: '#a8c4b8',
-    accent: '#8fa8b5'
+    primary: '#ff4444',
+    secondary: '#ff6666',
+    accent: '#cc0000'
   };
 
   if (!prompt || !prompt.trim()) {
@@ -285,7 +285,7 @@ function addCalculations(doc, headers, records, options, margin, startY) {
   if (!options.advanced?.calculations) return;
   
   doc.moveDown(1);
-  doc.font('Helvetica-Bold').fontSize(options.fontSize + 2).fillColor(options.colors.primary || '#667eea');
+  doc.font('Helvetica-Bold').fontSize(options.fontSize + 2).fillColor(options.colors.primary || '#ff4444');
   doc.text('Summary', margin, startY);
   doc.moveDown(0.5);
   
@@ -829,7 +829,7 @@ module.exports = async (req, res) => {
                   (csvFiles.length === 1 ? 'CSV to PDF Conversion' : `Combined PDF (${csvFiles.length} files)`);
     doc.fontSize(options.titleSize || 24)
        .font('Helvetica-Bold')
-       .fillColor(options.colors?.primary || options.headerColor || '#667eea')
+       .fillColor(options.colors?.primary || options.headerColor || '#ff4444')
        .text(title, { align: 'center' });
     doc.moveDown(0.5);
     
@@ -885,12 +885,12 @@ module.exports = async (req, res) => {
         // Add file section title
         doc.fontSize(options.titleSize - 4 || 20)
            .font('Helvetica-Bold')
-           .fillColor(options.colors?.primary || options.headerColor || '#667eea')
+           .fillColor(options.colors?.primary || options.headerColor || '#ff4444')
            .text(`File: ${fileName}`, { align: 'left' });
         doc.moveDown(0.8);
         
         // Draw separator line
-        doc.strokeColor(options.colors?.secondary || options.colors?.primary || '#667eea')
+        doc.strokeColor(options.colors?.secondary || options.colors?.primary || '#ff4444')
            .lineWidth(2)
            .moveTo(50, doc.y)
            .lineTo(doc.page.width - 50, doc.y)
