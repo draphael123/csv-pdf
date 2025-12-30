@@ -3,38 +3,260 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV to PDF Converter</title>
+    <title>CSV to PDF Converter - Advanced</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
+        <div class="visitor-counter">
+            <span class="visitor-icon">👥</span>
+            <span class="visitor-text">Daily Visitors: <span id="visitorCount">0</span></span>
+            <button class="dark-mode-toggle" id="darkModeToggle" title="Toggle Dark Mode">🌙</button>
+        </div>
         <div class="card">
             <h1>CSV to PDF Converter</h1>
             <p class="subtitle">Transform your data into a beautifully formatted PDF document</p>
             
+            <div class="tabs">
+                <button class="tab-button active" data-tab="upload">📤 Upload</button>
+                <button class="tab-button" data-tab="preview">👁️ Preview</button>
+                <button class="tab-button" data-tab="format">🎨 Format</button>
+                <button class="tab-button" data-tab="advanced">⚙️ Advanced</button>
+                <button class="tab-button" data-tab="templates">📋 Templates</button>
+            </div>
+
             <form id="uploadForm" class="upload-form">
-                <div class="file-upload-area" id="dropZone">
-                    <input type="file" id="csvFile" accept=".csv" required>
-                    <div class="upload-icon">📄</div>
-                    <p class="upload-text">Click to select a CSV file or drag and drop</p>
-                    <p class="file-name" id="fileName"></p>
-                </div>
-                
-                <div class="prompt-section">
-                    <label for="formatPrompt" class="prompt-label">Formatting Instructions (Optional)</label>
-                    <div class="prompt-input-wrapper">
-                        <textarea 
-                            id="formatPrompt" 
-                            class="prompt-input" 
-                            placeholder="Example: Make it a table format, use landscape orientation, blue headers, larger font size..."
-                            rows="3"
-                        ></textarea>
-                        <button type="button" class="preview-button" id="previewButton">Preview</button>
+                <!-- Upload Tab -->
+                <div class="tab-content active" id="uploadTab">
+                    <div class="file-upload-area" id="dropZone">
+                        <input type="file" id="csvFile" accept=".csv,.xlsx,.xls,.tsv" required>
+                        <div class="upload-icon">📄</div>
+                        <p class="upload-text">Click to select a CSV/Excel file or drag and drop</p>
+                        <p class="file-name" id="fileName"></p>
                     </div>
-                    <p class="prompt-hint">Describe how you want the PDF formatted (e.g., "table format", "landscape", "blue colors", "larger fonts")</p>
-                    <div id="previewBox" class="preview-box" style="display: none;">
-                        <div class="preview-header">Formatting Preview</div>
-                        <div id="previewContent" class="preview-content"></div>
+                    
+                    <div class="batch-upload" id="batchUpload" style="display: none;">
+                        <label>Batch Processing:</label>
+                        <input type="file" id="batchFiles" multiple accept=".csv,.xlsx,.xls,.tsv">
+                        <p class="hint">Select multiple files to convert at once</p>
+                    </div>
+                </div>
+
+                <!-- Preview Tab -->
+                <div class="tab-content" id="previewTab">
+                    <div id="csvPreview" class="csv-preview">
+                        <p class="preview-placeholder">Upload a file to see preview</p>
+                    </div>
+                    <div class="preview-controls" id="previewControls" style="display: none;">
+                        <div class="control-group">
+                            <label>Select Columns:</label>
+                            <div id="columnCheckboxes" class="column-checkboxes"></div>
+                        </div>
+                        <div class="control-group">
+                            <label>Sort By:</label>
+                            <select id="sortColumn">
+                                <option value="">None</option>
+                            </select>
+                            <select id="sortOrder">
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label>Filter:</label>
+                            <input type="text" id="filterInput" placeholder="Filter rows...">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Format Tab -->
+                <div class="tab-content" id="formatTab">
+                    <div class="prompt-section">
+                        <label for="formatPrompt" class="prompt-label">Formatting Instructions (Optional)</label>
+                        <div class="prompt-input-wrapper">
+                            <textarea 
+                                id="formatPrompt" 
+                                class="prompt-input" 
+                                placeholder="Example: Make it a table format, use landscape orientation, blue headers, larger font size..."
+                                rows="3"
+                            ></textarea>
+                            <button type="button" class="preview-button" id="previewButton">Preview</button>
+                        </div>
+                        <p class="prompt-hint">Describe how you want the PDF formatted (e.g., "table format", "landscape", "blue colors", "larger fonts")</p>
+                        <div id="previewBox" class="preview-box" style="display: none;">
+                            <div class="preview-header">Formatting Preview</div>
+                            <div id="previewContent" class="preview-content"></div>
+                        </div>
+                    </div>
+
+                    <div class="format-options">
+                        <div class="option-group">
+                            <label>Layout:</label>
+                            <select id="layoutType">
+                                <option value="list">List</option>
+                                <option value="table">Table</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label>Orientation:</label>
+                            <select id="orientation">
+                                <option value="portrait">Portrait</option>
+                                <option value="landscape">Landscape</option>
+                            </select>
+                        </div>
+                        <div class="option-group">
+                            <label>Font Size:</label>
+                            <input type="number" id="fontSize" min="8" max="20" value="11">
+                        </div>
+                        <div class="option-group">
+                            <label>Header Color:</label>
+                            <input type="color" id="headerColor" value="#667eea">
+                        </div>
+                        <div class="option-group">
+                            <label>Text Color:</label>
+                            <input type="color" id="textColor" value="#4a5a65">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Advanced Tab -->
+                <div class="tab-content" id="advancedTab">
+                    <div class="advanced-sections">
+                        <div class="section">
+                            <h3>PDF Settings</h3>
+                            <div class="option-group">
+                                <label>Page Breaks:</label>
+                                <select id="pageBreakMode">
+                                    <option value="auto">Auto</option>
+                                    <option value="every">Every N Rows</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                                <input type="number" id="pageBreakRows" min="1" value="50" style="display: none;">
+                            </div>
+                            <div class="option-group">
+                                <label>Header Text:</label>
+                                <input type="text" id="headerText" placeholder="Page header text">
+                            </div>
+                            <div class="option-group">
+                                <label>Footer Text:</label>
+                                <input type="text" id="footerText" placeholder="Page footer text">
+                            </div>
+                            <div class="option-group">
+                                <label><input type="checkbox" id="showPageNumbers"> Show Page Numbers</input></label>
+                            </div>
+                            <div class="option-group">
+                                <label><input type="checkbox" id="showDate"> Show Date in Footer</input></label>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>PDF Metadata</h3>
+                            <div class="option-group">
+                                <label>Title:</label>
+                                <input type="text" id="pdfTitle" placeholder="PDF Title">
+                            </div>
+                            <div class="option-group">
+                                <label>Author:</label>
+                                <input type="text" id="pdfAuthor" placeholder="Author Name">
+                            </div>
+                            <div class="option-group">
+                                <label>Subject:</label>
+                                <input type="text" id="pdfSubject" placeholder="Subject">
+                            </div>
+                            <div class="option-group">
+                                <label>Keywords:</label>
+                                <input type="text" id="pdfKeywords" placeholder="Keywords (comma-separated)">
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>Security</h3>
+                            <div class="option-group">
+                                <label><input type="checkbox" id="passwordProtect"> Password Protect PDF</input></label>
+                                <input type="password" id="pdfPassword" placeholder="Password" style="display: none;">
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>Table Options</h3>
+                            <div class="option-group">
+                                <label>Column Width:</label>
+                                <select id="columnWidthMode">
+                                    <option value="auto">Auto-fit</option>
+                                    <option value="equal">Equal Width</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
+                            <div class="option-group">
+                                <label><input type="checkbox" id="alternatingRows"> Alternating Row Colors</input></label>
+                            </div>
+                            <div class="option-group">
+                                <label>Border Style:</label>
+                                <select id="borderStyle">
+                                    <option value="all">All Borders</option>
+                                    <option value="horizontal">Horizontal Only</option>
+                                    <option value="vertical">Vertical Only</option>
+                                    <option value="none">No Borders</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>Data Processing</h3>
+                            <div class="option-group">
+                                <label><input type="checkbox" id="calculateTotals"> Calculate Totals for Numeric Columns</input></label>
+                            </div>
+                            <div class="option-group">
+                                <label><input type="checkbox" id="calculateAverages"> Calculate Averages for Numeric Columns</input></label>
+                            </div>
+                            <div class="option-group">
+                                <label>Split Large Files:</label>
+                                <select id="splitMode">
+                                    <option value="none">Don't Split</option>
+                                    <option value="rows">Split by Row Count</option>
+                                    <option value="size">Split by File Size</option>
+                                </select>
+                                <input type="number" id="splitValue" min="1" value="1000" style="display: none;">
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <h3>Conditional Formatting</h3>
+                            <div class="option-group">
+                                <label>Enable Conditional Formatting:</label>
+                                <input type="checkbox" id="enableConditionalFormat">
+                            </div>
+                            <div id="conditionalRules" style="display: none;">
+                                <div class="rule-item">
+                                    <select class="rule-column">
+                                        <option>Select Column</option>
+                                    </select>
+                                    <select class="rule-condition">
+                                        <option value="greater">Greater Than</option>
+                                        <option value="less">Less Than</option>
+                                        <option value="equal">Equal To</option>
+                                        <option value="contains">Contains</option>
+                                    </select>
+                                    <input type="text" class="rule-value" placeholder="Value">
+                                    <input type="color" class="rule-color" value="#ff6b6b">
+                                    <button type="button" class="remove-rule">Remove</button>
+                                </div>
+                            </div>
+                            <button type="button" id="addRule" style="display: none;">Add Rule</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Templates Tab -->
+                <div class="tab-content" id="templatesTab">
+                    <div class="templates-section">
+                        <h3>Save/Load Templates</h3>
+                        <div class="template-controls">
+                            <input type="text" id="templateName" placeholder="Template name">
+                            <button type="button" id="saveTemplate">💾 Save Template</button>
+                            <button type="button" id="loadTemplate">📂 Load Template</button>
+                        </div>
+                        <div id="savedTemplates" class="saved-templates"></div>
                     </div>
                 </div>
                 
@@ -42,8 +264,17 @@
                     <span id="buttonText">Convert to PDF with Formatting</span>
                     <span id="buttonLoader" class="loader" style="display: none;"></span>
                 </button>
+                <div id="progressBar" class="progress-bar" style="display: none;">
+                    <div class="progress-fill" id="progressFill"></div>
+                    <span class="progress-text" id="progressText">0%</span>
+                </div>
                 <p class="submit-hint">The formatting instructions above will be applied when you click the button</p>
             </form>
+            
+            <div id="conversionHistory" class="conversion-history" style="display: none;">
+                <h3>Recent Conversions</h3>
+                <div id="historyList"></div>
+            </div>
             
             <p class="feedback-text">If you have any suggestions/requests that would make this tool more helpful please let me know!</p>
             
@@ -60,7 +291,8 @@
         </div>
     </div>
     
+    <div class="help-tooltip" id="helpTooltip" style="display: none;"></div>
+    
     <script src="script.js"></script>
 </body>
 </html>
-

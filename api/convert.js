@@ -165,8 +165,40 @@ function parseFormatPrompt(prompt) {
   return options;
 }
 
+// Helper function to add calculations (totals/averages)
+function addCalculations(doc, headers, records, options, margin, startY) {
+  if (!options.advanced?.calculations) return;
+  
+  doc.moveDown(1);
+  doc.font('Helvetica-Bold').fontSize(options.fontSize + 2).fillColor(options.colors.primary || '#667eea');
+  doc.text('Summary', margin, startY);
+  doc.moveDown(0.5);
+  
+  headers.forEach(header => {
+    const values = records.map(r => parseFloat(r[header])).filter(v => !isNaN(v));
+    if (values.length > 0) {
+      if (options.advanced.calculations.totals) {
+        const total = values.reduce((a, b) => a + b, 0);
+        doc.font('Helvetica-Bold').fontSize(options.fontSize).fillColor(options.colors.accent || options.colors.primary);
+        doc.text(`${header} Total: `, { continued: true });
+        doc.font('Helvetica').fillColor(options.textColor);
+        doc.text(total.toFixed(2), { continued: false });
+        doc.moveDown(0.3);
+      }
+      if (options.advanced.calculations.averages) {
+        const avg = values.reduce((a, b) => a + b, 0) / values.length;
+        doc.font('Helvetica-Bold').fontSize(options.fontSize).fillColor(options.colors.accent || options.colors.primary);
+        doc.text(`${header} Average: `, { continued: true });
+        doc.font('Helvetica').fillColor(options.textColor);
+        doc.text(avg.toFixed(2), { continued: false });
+        doc.moveDown(0.3);
+      }
+    }
+  });
+}
+
 // Generate table layout
-function generateTableLayout(doc, records, headers, options) {
+function generateTableLayout(doc, records, headers, options, addHeaderFooter) {
   const margin = 50;
   const pageWidth = doc.page.width;
   const pageHeight = doc.page.height;
@@ -189,10 +221,30 @@ function generateTableLayout(doc, records, headers, options) {
   // Draw table rows
   doc.font('Helvetica').fillColor(options.textColor);
   records.forEach((record, recordIndex) => {
-    // Check if we need a new page
-    if (startY + rowHeight > pageHeight - margin) {
+    // Check for page breaks
+    const pageBreakMode = options.advanced?.pageBreak?.mode || 'auto';
+    const pageBreakRows = options.advanced?.pageBreak?.rows || 50;
+    
+    let needsNewPage = false;
+    if (pageBreakMode === 'every' && recordIndex > 0 && recordIndex % pageBreakRows === 0) {
+      needsNewPage = true;
+    } else if (startY + rowHeight > pageHeight - margin - 50) {
+      needsNewPage = true;
+    }
+    
+    if (needsNewPage) {
+      // Add totals/averages before new page if needed
+      if (options.advanced?.calculations && recordIndex > 0) {
+        addCalculations(doc, headers, records.slice(0, recordIndex), options, margin, startY);
+        startY = doc.y + 10;
+      }
+      
       doc.addPage();
-      startY = margin;
+      if (addHeaderFooter) {
+        const totalPages = Math.ceil(records.length / (pageBreakMode === 'every' ? pageBreakRows : 100));
+        addHeaderFooter(Math.floor(recordIndex / pageBreakRows) + 1, totalPages);
+      }
+      startY = margin + 30;
       
       // Redraw header on new page
       doc.font('Helvetica-Bold').fontSize(options.fontSize).fillColor('#ffffff');
@@ -207,26 +259,90 @@ function generateTableLayout(doc, records, headers, options) {
     }
 
     // Alternate row colors for better readability
-    const rowColor = recordIndex % 2 === 0 ? '#f8f9fa' : '#ffffff';
+    let rowColor = '#ffffff';
+    if (options.advanced?.table?.alternatingRows) {
+      rowColor = recordIndex % 2 === 0 ? '#f8f9fa' : '#ffffff';
+    }
+    
+    // Apply conditional formatting
+    if (options.advanced?.conditionalFormatting) {
+      options.advanced.conditionalFormatting.forEach(rule => {
+        const cellValue = String(record[rule.column] || '');
+        let matches = false;
+        
+        if (rule.condition === 'greater' && !isNaN(cellValue) && !isNaN(rule.value)) {
+          matches = parseFloat(cellValue) > parseFloat(rule.value);
+        } else if (rule.condition === 'less' && !isNaN(cellValue) && !isNaN(rule.value)) {
+          matches = parseFloat(cellValue) < parseFloat(rule.value);
+        } else if (rule.condition === 'equal') {
+          matches = cellValue === rule.value;
+        } else if (rule.condition === 'contains') {
+          matches = cellValue.toLowerCase().includes(rule.value.toLowerCase());
+        }
+        
+        if (matches) {
+          rowColor = rule.color;
+        }
+      });
+    }
     currentX = margin;
     headers.forEach((header, index) => {
       const value = String(record[header] || '(empty)');
-      doc.rect(currentX, startY, columnWidth, rowHeight).fillAndStroke(rowColor, '#e0e0e0');
-      doc.fontSize(options.fontSize).text(value, currentX + 5, startY + 5, { width: columnWidth - 10, align: 'left' });
+      // Border style
+      const borderStyle = options.advanced?.table?.borderStyle || 'all';
+      const strokeColor = (borderStyle === 'all' || (borderStyle === 'horizontal' && index === 0)) ? '#e0e0e0' : 'transparent';
+      doc.rect(currentX, startY, columnWidth, rowHeight).fillAndStroke(rowColor, strokeColor);
+      
+      // Check if value is a URL
+      if (value.match(/^https?:\/\//i)) {
+        doc.fontSize(options.fontSize)
+           .fillColor('#0066cc')
+           .text(value, currentX + 5, startY + 5, { 
+             width: columnWidth - 10, 
+             align: 'left',
+             link: value,
+             underline: true
+           });
+        doc.fillColor(options.textColor); // Reset color
+      } else {
+        doc.fontSize(options.fontSize).text(value, currentX + 5, startY + 5, { width: columnWidth - 10, align: 'left' });
+      }
       currentX += columnWidth;
     });
     startY += rowHeight;
   });
+  
+  // Add final calculations if needed
+  if (options.advanced?.calculations && records.length > 0) {
+    const calcY = startY;
+    addCalculations(doc, headers, records, options, margin, startY);
+    // Add bookmark for summary
+    doc.outline.addItem('Summary', { expanded: false, destination: [doc.page, 0, calcY] });
+  }
 }
 
 // Generate list layout (original style with customizations)
-function generateListLayout(doc, records, headers, options) {
+function generateListLayout(doc, records, headers, options, addHeaderFooter) {
   doc.font('Helvetica').fontSize(options.fontSize);
   
+  const pageBreakMode = options.advanced?.pageBreak?.mode || 'auto';
+  const pageBreakRows = options.advanced?.pageBreak?.rows || 50;
+  
   records.forEach((record, recordIndex) => {
-    // Check if we need a new page (leave space for at least 3 columns)
-    if (doc.y > doc.page.height - 150) {
+    // Check for page breaks
+    let needsNewPage = false;
+    if (pageBreakMode === 'every' && recordIndex > 0 && recordIndex % pageBreakRows === 0) {
+      needsNewPage = true;
+    } else if (doc.y > doc.page.height - 150) {
+      needsNewPage = true;
+    }
+    
+    if (needsNewPage) {
       doc.addPage();
+      if (addHeaderFooter) {
+        const totalPages = Math.ceil(records.length / (pageBreakMode === 'every' ? pageBreakRows : 100));
+        addHeaderFooter(Math.floor(recordIndex / pageBreakRows) + 1, totalPages);
+      }
     }
 
     // Record header
@@ -260,7 +376,15 @@ function generateListLayout(doc, records, headers, options) {
       
       // Column value (regular) - continues on same line
       doc.font('Helvetica').fillColor(options.textColor);
-      doc.text(value, { continued: false });
+      
+      // Check if value is a URL
+      if (value.match(/^https?:\/\//i)) {
+        doc.fillColor('#0066cc')
+           .text(value, { continued: false, link: value, underline: true });
+        doc.fillColor(options.textColor); // Reset color
+      } else {
+        doc.text(value, { continued: false });
+      }
       
       doc.moveDown(0.7);
     });
@@ -276,6 +400,11 @@ function generateListLayout(doc, records, headers, options) {
       doc.moveDown(1);
     }
   });
+  
+  // Add final calculations if needed
+  if (options.advanced?.calculations && records.length > 0) {
+    addCalculations(doc, headers, records, options, 50, doc.y);
+  }
 }
 
 module.exports = async (req, res) => {
@@ -314,6 +443,14 @@ module.exports = async (req, res) => {
         if (name === 'formatPrompt') {
           formatPrompt = value;
           console.log('Set formatPrompt to:', formatPrompt);
+        } else if (name === 'options') {
+          try {
+            formatPrompt = JSON.parse(value);
+            console.log('Received JSON options');
+          } catch (e) {
+            console.log('Options not JSON, using as prompt');
+            formatPrompt = value;
+          }
         }
       });
 
@@ -341,7 +478,7 @@ module.exports = async (req, res) => {
     console.log('FormatPrompt length:', formatPrompt ? formatPrompt.length : 0);
 
     // Parse CSV
-    const records = parse(csvContent, {
+    let records = parse(csvContent, {
       columns: true,
       skip_empty_lines: true,
       trim: true
@@ -351,20 +488,70 @@ module.exports = async (req, res) => {
       return res.status(400).json({ error: 'CSV file is empty or has no valid data' });
     }
 
-    // Get column headers
-    const headers = Object.keys(records[0]);
-
-    // Parse formatting prompt
-    const formatOptions = parseFormatPrompt(formatPrompt);
+    // Check if formatPrompt is JSON (new format) or string (old format)
+    let options = {};
+    let headers = Object.keys(records[0]);
+    
+    if (typeof formatPrompt === 'string' && formatPrompt.startsWith('{')) {
+      try {
+        options = JSON.parse(formatPrompt);
+        // Use provided data if available
+        if (options.filteredData && Array.isArray(options.filteredData)) {
+          records = options.filteredData;
+        }
+        if (options.selectedColumns && Array.isArray(options.selectedColumns) && options.selectedColumns.length > 0) {
+          headers = options.selectedColumns;
+        }
+      } catch (e) {
+        // Fall back to text parsing
+        options = parseFormatPrompt(formatPrompt);
+      }
+    } else {
+      options = parseFormatPrompt(formatPrompt);
+    }
+    
+    // Merge UI options with parsed options
+    if (options.layout) {
+      options.useTable = options.layout === 'table';
+    }
+    if (options.orientation) {
+      options.orientation = options.orientation;
+    }
+    if (options.fontSize) {
+      options.fontSize = parseInt(options.fontSize) || options.fontSize;
+      options.titleSize = Math.max(options.fontSize * 2, 20);
+    }
+    if (options.headerColor) {
+      options.colors = options.colors || {};
+      options.colors.primary = options.headerColor;
+    }
+    if (options.textColor) {
+      options.textColor = options.textColor;
+    }
     
     // Debug: Log parsed options
-    console.log('Parsed format options:', JSON.stringify(formatOptions, null, 2));
+    console.log('Final format options:', JSON.stringify(options, null, 2));
 
     // Create PDF document with parsed orientation
     const doc = new PDFDocument({ 
       margin: 50,
-      size: formatOptions.orientation === 'landscape' ? [792, 612] : [612, 792]
+      size: options.orientation === 'landscape' ? [792, 612] : [612, 792],
+      info: {
+        Title: options.advanced?.metadata?.title || 'CSV to PDF Conversion',
+        Author: options.advanced?.metadata?.author || '',
+        Subject: options.advanced?.metadata?.subject || '',
+        Keywords: options.advanced?.metadata?.keywords?.join(', ') || ''
+      }
     });
+    
+    // Apply password protection if requested
+    if (options.advanced?.password) {
+      doc.encrypt({
+        userPassword: options.advanced.password,
+        ownerPassword: options.advanced.password,
+        userPermissions: ['print', 'modify', 'copy', 'annotate']
+      });
+    }
     
     // Set response headers
     res.setHeader('Content-Type', 'application/pdf');
@@ -373,20 +560,63 @@ module.exports = async (req, res) => {
     // Pipe PDF to response
     doc.pipe(res);
 
+    // Helper function to add headers/footers
+    const addHeaderFooter = (pageNum, totalPages) => {
+      const pageWidth = doc.page.width;
+      const pageHeight = doc.page.height;
+      
+      // Header
+      if (options.advanced?.header) {
+        doc.fontSize(10)
+           .fillColor(options.textColor || '#4a5a65')
+           .text(options.advanced.header, 50, 30, { width: pageWidth - 100, align: 'left' });
+      }
+      
+      // Footer
+      let footerText = '';
+      if (options.advanced?.footer) {
+        footerText = options.advanced.footer;
+      }
+      if (options.advanced?.showDate) {
+        footerText += (footerText ? ' | ' : '') + new Date().toLocaleDateString();
+      }
+      if (options.advanced?.showPageNumbers) {
+        footerText += (footerText ? ' | ' : '') + `Page ${pageNum} of ${totalPages}`;
+      }
+      
+      if (footerText) {
+        doc.fontSize(9)
+           .fillColor(options.textColor || '#4a5a65')
+           .text(footerText, 50, pageHeight - 30, { width: pageWidth - 100, align: 'center' });
+      }
+    };
+
     // Add title with parsed options
-    doc.fontSize(formatOptions.titleSize)
+    doc.fontSize(options.titleSize || 24)
        .font('Helvetica-Bold')
-       .fillColor(formatOptions.colors.primary)
-       .text('CSV to PDF Conversion', { align: 'center' });
+       .fillColor(options.colors?.primary || options.headerColor || '#667eea')
+       .text(options.advanced?.metadata?.title || 'CSV to PDF Conversion', { align: 'center' });
     doc.moveDown(1);
+    
+    // Add bookmarks for navigation
+    if (options.useTable) {
+      doc.outline.addItem('Table View', { expanded: true });
+    } else {
+      doc.outline.addItem('List View', { expanded: true });
+    }
+    
+    // Add bookmark for summary if calculations are enabled
+    if (options.advanced?.calculations) {
+      // Will be added after calculations are generated
+    }
 
     // Process records based on layout preference
-    if (formatOptions.useTable) {
+    if (options.useTable) {
       // Table layout
-      generateTableLayout(doc, records, headers, formatOptions);
+      generateTableLayout(doc, records, headers, options, addHeaderFooter);
     } else {
       // List layout (original)
-      generateListLayout(doc, records, headers, formatOptions);
+      generateListLayout(doc, records, headers, options, addHeaderFooter);
     }
 
     // Finalize PDF
