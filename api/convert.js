@@ -720,14 +720,28 @@ module.exports = async (req, res) => {
     // Check if formatPrompt is JSON (new format) or string (old format)
     let options = {};
     let headers = Array.from(allHeadersSet); // Use union of all headers
+    let promptText = '';
     
-    if (typeof formatPrompt === 'string' && formatPrompt.startsWith('{')) {
+    // Extract formatPrompt from options object if it exists
+    if (typeof formatPrompt === 'object' && formatPrompt !== null) {
+      // formatPrompt is the entire options object
+      options = formatPrompt;
+      promptText = options.formatPrompt || '';
+      
+      // Use provided data if available (note: we already have allRecords from file parsing)
+      // The filteredData from options would override, but we'll keep the parsed file data
+      if (options.selectedColumns && Array.isArray(options.selectedColumns) && options.selectedColumns.length > 0) {
+        // Only use selected columns that exist in the data
+        headers = options.selectedColumns.filter(col => allHeadersSet.has(col));
+        if (headers.length === 0) {
+          headers = Array.from(allHeadersSet);
+        }
+      }
+    } else if (typeof formatPrompt === 'string' && formatPrompt.startsWith('{')) {
       try {
         options = JSON.parse(formatPrompt);
-        // Use provided data if available
-        if (options.filteredData && Array.isArray(options.filteredData)) {
-          records = options.filteredData;
-        }
+        promptText = options.formatPrompt || '';
+        // Use provided data if available (note: we already have allRecords from file parsing)
         if (options.selectedColumns && Array.isArray(options.selectedColumns) && options.selectedColumns.length > 0) {
           // Only use selected columns that exist in the data
           headers = options.selectedColumns.filter(col => allHeadersSet.has(col));
@@ -737,11 +751,31 @@ module.exports = async (req, res) => {
         }
       } catch (e) {
         // Fall back to text parsing
-        options = parseFormatPrompt(formatPrompt);
+        promptText = formatPrompt;
       }
     } else {
-      options = parseFormatPrompt(formatPrompt);
+      // formatPrompt is a plain string
+      promptText = formatPrompt || '';
     }
+    
+    // Parse the prompt text to extract formatting options
+    const parsedPromptOptions = parseFormatPrompt(promptText);
+    
+    // Merge parsed prompt options with UI options (UI options take precedence)
+    options = {
+      ...parsedPromptOptions,
+      ...options,
+      // Preserve UI settings that were explicitly set
+      layout: options.layout || parsedPromptOptions.layout,
+      orientation: options.orientation || parsedPromptOptions.orientation,
+      fontSize: options.fontSize || parsedPromptOptions.fontSize,
+      headerColor: options.headerColor || parsedPromptOptions.headerColor,
+      textColor: options.textColor || parsedPromptOptions.textColor,
+      colors: {
+        ...parsedPromptOptions.colors,
+        ...(options.colors || {})
+      }
+    };
     
     // Merge UI options with parsed options
     if (options.layout) {
