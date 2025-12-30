@@ -37,39 +37,253 @@ function updateVisitorCounter() {
 // Initialize visitor counter on page load
 updateVisitorCounter();
 
-// Handle file selection (multiple files)
-csvFileInput.addEventListener('change', (e) => {
+// File size limits
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const WARN_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+
+// Validate file
+function validateFile(file) {
+    const errors = [];
+    
+    // Check file size
+    if (file.size > MAX_FILE_SIZE) {
+        errors.push(`File "${file.name}" is too large (${(file.size / 1024 / 1024).toFixed(2)} MB). Maximum size is ${MAX_FILE_SIZE / 1024 / 1024} MB.`);
+        return { valid: false, errors };
+    }
+    
+    if (file.size > WARN_FILE_SIZE) {
+        errors.push(`Warning: File "${file.name}" is large (${(file.size / 1024 / 1024).toFixed(2)} MB). Processing may take longer.`);
+    }
+    
+    // Check file extension
+    const validExtensions = ['.csv', '.xlsx', '.xls', '.tsv'];
+    const hasValidExtension = validExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+    
+    if (!hasValidExtension) {
+        errors.push(`File "${file.name}" has an unsupported extension. Supported: ${validExtensions.join(', ')}`);
+        return { valid: false, errors };
+    }
+    
+    return { valid: true, errors, warnings: errors };
+}
+
+// Handle file selection (multiple files) with validation
+csvFileInput.addEventListener('change', async (e) => {
     const files = Array.from(e.target.files);
-    if (files.length > 0) {
-        displayFileList(files);
+    if (files.length === 0) return;
+    
+    const validationResults = files.map(file => ({ file, ...validateFile(file) }));
+    const invalidFiles = validationResults.filter(r => !r.valid);
+    const validFiles = validationResults.filter(r => r.valid);
+    const warnings = validationResults.filter(r => r.warnings && r.warnings.length > 0);
+    
+    // Show errors for invalid files
+    if (invalidFiles.length > 0) {
+        const errorMessages = invalidFiles.flatMap(r => r.errors);
+        showError(errorMessages.join('\n'));
+        
+        // Remove invalid files from input
+        const dataTransfer = new DataTransfer();
+        validFiles.forEach(({ file }) => dataTransfer.items.add(file));
+        csvFileInput.files = dataTransfer.files;
+    }
+    
+    // Show warnings
+    if (warnings.length > 0 && invalidFiles.length === 0) {
+        const warningMessages = warnings.flatMap(r => r.warnings);
+        // Show as info message (you might want to create a showWarning function)
+        console.warn('File warnings:', warningMessages);
+    }
+    
+    if (validFiles.length > 0) {
+        const validFileObjects = validFiles.map(r => r.file);
+        displayFileList(validFileObjects);
+        
+        // Load preview for first file
+        if (validFileObjects.length > 0) {
+            await loadCSVPreview(validFileObjects[0]);
+        }
+        
         hideMessages();
     }
 });
 
-// Display list of selected files
+// Display list of selected files with remove buttons and drag-and-drop
 function displayFileList(files) {
+    uploadedFiles = Array.from(files);
     const fileList = document.getElementById('fileList');
     fileList.innerHTML = '';
+    
+    // Calculate total statistics
+    const totalSize = files.reduce((sum, file) => sum + file.size, 0);
+    const totalRows = Array.from(fileDataMap.values()).reduce((sum, data) => sum + (data.rows || 0), 0);
+    
+    // Show statistics
+    const statsDiv = document.createElement('div');
+    statsDiv.className = 'file-stats';
+    statsDiv.innerHTML = `
+        <div class="stat-item">
+            <span class="stat-label">Files:</span>
+            <span class="stat-value">${files.length}</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-label">Total Size:</span>
+            <span class="stat-value">${(totalSize / 1024).toFixed(2)} KB</span>
+        </div>
+        ${totalRows > 0 ? `
+        <div class="stat-item">
+            <span class="stat-label">Total Rows:</span>
+            <span class="stat-value">${totalRows.toLocaleString()}</span>
+        </div>
+        ` : ''}
+    `;
+    fileList.appendChild(statsDiv);
     
     if (files.length === 1) {
         fileName.textContent = `Selected: ${files[0].name}`;
         fileName.style.display = 'block';
-        fileList.style.display = 'none';
+        // Still show file list for single file to allow removal
+        fileList.style.display = 'block';
+        
+        const fileItem = createFileItem(files[0], 0);
+        fileList.appendChild(fileItem);
     } else {
         fileName.textContent = `Selected: ${files.length} files`;
         fileName.style.display = 'block';
         fileList.style.display = 'block';
         
         files.forEach((file, index) => {
-            const fileItem = document.createElement('div');
-            fileItem.className = 'file-item';
-            fileItem.innerHTML = `
-                <span class="file-item-name">${file.name}</span>
-                <span class="file-item-size">(${(file.size / 1024).toFixed(2)} KB)</span>
-            `;
+            const fileItem = createFileItem(file, index);
             fileList.appendChild(fileItem);
         });
     }
+    
+    // Make file list sortable
+    makeFileListSortable();
+}
+
+// Create a file item with remove button
+function createFileItem(file, index) {
+    const fileItem = document.createElement('div');
+    fileItem.className = 'file-item';
+    fileItem.draggable = true;
+    fileItem.dataset.index = index;
+    
+    const fileInfo = fileDataMap.get(file.name);
+    const rowCount = fileInfo ? fileInfo.rows : '?';
+    
+    fileItem.innerHTML = `
+        <span class="drag-handle">☰</span>
+        <span class="file-item-name" title="${file.name}">${file.name}</span>
+        <span class="file-item-info">
+            <span class="file-item-size">${(file.size / 1024).toFixed(2)} KB</span>
+            ${rowCount !== '?' ? `<span class="file-item-rows">${rowCount} rows</span>` : ''}
+        </span>
+        <button type="button" class="remove-file-btn" data-index="${index}" title="Remove file">×</button>
+    `;
+    
+    // Add remove button event
+    const removeBtn = fileItem.querySelector('.remove-file-btn');
+    removeBtn.addEventListener('click', () => removeFile(index));
+    
+    // Add drag events
+    fileItem.addEventListener('dragstart', handleDragStart);
+    fileItem.addEventListener('dragover', handleDragOver);
+    fileItem.addEventListener('drop', handleDrop);
+    fileItem.addEventListener('dragend', handleDragEnd);
+    
+    return fileItem;
+}
+
+// Remove file from list
+function removeFile(index) {
+    uploadedFiles.splice(index, 1);
+    
+    // Update file input
+    const dataTransfer = new DataTransfer();
+    uploadedFiles.forEach(file => dataTransfer.items.add(file));
+    csvFileInput.files = dataTransfer.files;
+    
+    // Update display
+    displayFileList(uploadedFiles);
+    
+    // Clear preview if removed file was being previewed
+    if (csvData && fileDataMap.size === 0) {
+        csvData = null;
+        csvHeaders = [];
+        filteredData = null;
+        renderCSVPreview();
+    }
+}
+
+// Drag and drop for file reordering
+let draggedElement = null;
+
+function handleDragStart(e) {
+    draggedElement = this;
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', this.innerHTML);
+}
+
+function handleDragOver(e) {
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
+    e.dataTransfer.dropEffect = 'move';
+    
+    const afterElement = getDragAfterElement(this.parentElement, e.clientY);
+    const dragging = document.querySelector('.dragging');
+    
+    if (afterElement == null) {
+        this.parentElement.appendChild(dragging);
+    } else {
+        this.parentElement.insertBefore(dragging, afterElement);
+    }
+}
+
+function handleDrop(e) {
+    if (e.stopPropagation) {
+        e.stopPropagation();
+    }
+    return false;
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    
+    // Reorder files based on new DOM order
+    const fileItems = Array.from(document.querySelectorAll('.file-item:not(.file-stats)'));
+    const newOrder = fileItems.map(item => {
+        const index = parseInt(item.dataset.index);
+        return uploadedFiles[index];
+    }).filter(Boolean);
+    
+    if (newOrder.length === uploadedFiles.length) {
+        uploadedFiles = newOrder;
+        const dataTransfer = new DataTransfer();
+        uploadedFiles.forEach(file => dataTransfer.items.add(file));
+        csvFileInput.files = dataTransfer.files;
+    }
+}
+
+function getDragAfterElement(container, y) {
+    const draggableElements = [...container.querySelectorAll('.file-item:not(.dragging):not(.file-stats)')];
+    
+    return draggableElements.reduce((closest, child) => {
+        const box = child.getBoundingClientRect();
+        const offset = y - box.top - box.height / 2;
+        
+        if (offset < 0 && offset > closest.offset) {
+            return { offset: offset, element: child };
+        } else {
+            return closest;
+        }
+    }, { offset: Number.NEGATIVE_INFINITY }).element;
+}
+
+function makeFileListSortable() {
+    // Already handled by drag events above
 }
 
 // Drag and drop functionality
@@ -82,7 +296,7 @@ dropZone.addEventListener('dragleave', () => {
     dropZone.classList.remove('dragover');
 });
 
-dropZone.addEventListener('drop', (e) => {
+dropZone.addEventListener('drop', async (e) => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
     
@@ -97,12 +311,32 @@ dropZone.addEventListener('drop', (e) => {
     );
     
     if (files.length > 0) {
-        // Create a new FileList-like object
-        const dataTransfer = new DataTransfer();
-        files.forEach(file => dataTransfer.items.add(file));
-        csvFileInput.files = dataTransfer.files;
-        displayFileList(files);
-        hideMessages();
+        // Validate files
+        const validationResults = files.map(file => ({ file, ...validateFile(file) }));
+        const invalidFiles = validationResults.filter(r => !r.valid);
+        const validFiles = validationResults.filter(r => r.valid);
+        
+        if (invalidFiles.length > 0) {
+            const errorMessages = invalidFiles.flatMap(r => r.errors);
+            showError(errorMessages.join('\n'));
+        }
+        
+        if (validFiles.length > 0) {
+            // Create a new FileList-like object
+            const dataTransfer = new DataTransfer();
+            validFiles.forEach(({ file }) => dataTransfer.items.add(file));
+            csvFileInput.files = dataTransfer.files;
+            
+            const validFileObjects = validFiles.map(r => r.file);
+            displayFileList(validFileObjects);
+            
+            // Load preview for first file
+            if (validFileObjects.length > 0) {
+                await loadCSVPreview(validFileObjects[0]);
+            }
+            
+            hideMessages();
+        }
     } else {
         showError('Please upload valid CSV/Excel files.');
     }
@@ -114,11 +348,39 @@ function setLoadingState(loading) {
     buttonLoader.style.display = loading ? 'inline-block' : 'none';
 }
 
-function showSuccess() {
+function showSuccess(pdfUrl) {
     successMessage.style.display = 'block';
     errorMessage.style.display = 'none';
     successMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    
+    // Store PDF URL for preview
+    if (pdfUrl) {
+        window.lastPdfUrl = pdfUrl;
+    }
 }
+
+// PDF Preview functionality
+const previewPdfBtn = document.getElementById('previewPdfBtn');
+const pdfPreviewContainer = document.getElementById('pdfPreviewContainer');
+const pdfPreviewFrame = document.getElementById('pdfPreviewFrame');
+
+if (previewPdfBtn) {
+    previewPdfBtn.addEventListener('click', () => {
+        if (window.lastPdfUrl) {
+            pdfPreviewFrame.src = window.lastPdfUrl;
+            pdfPreviewContainer.style.display = pdfPreviewContainer.style.display === 'none' ? 'block' : 'none';
+            previewPdfBtn.textContent = pdfPreviewContainer.style.display === 'none' ? 'Preview PDF' : 'Hide Preview';
+        }
+    });
+}
+
+// Example prompt buttons
+document.querySelectorAll('.example-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        formatPrompt.value = btn.dataset.prompt;
+        showPreview();
+    });
+});
 
 function showError(message) {
     errorText.textContent = message;
@@ -389,6 +651,10 @@ let csvData = null;
 let csvHeaders = [];
 let filteredData = null;
 let selectedColumns = [];
+let uploadedFiles = []; // Store file objects for management
+let fileDataMap = new Map(); // Map to store file data for preview
+let settingsHistory = []; // For undo/redo
+let currentHistoryIndex = -1;
 
 // Tab Navigation
 const tabButtons = document.querySelectorAll('.tab-button');
@@ -434,39 +700,103 @@ csvFileInput.addEventListener('change', async (e) => {
     }
 });
 
-async function loadCSVPreview(file) {
+async function loadCSVPreview(file, fileIndex = 0) {
     try {
-        const text = await file.text();
-        const lines = text.split('\n').filter(line => line.trim());
-        
-        if (lines.length === 0) {
-            showError('CSV file is empty');
+        // Check if we already have this file's data
+        if (fileDataMap.has(file.name)) {
+            const cached = fileDataMap.get(file.name);
+            csvData = cached.data;
+            csvHeaders = cached.headers;
+            filteredData = [...csvData];
+            selectedColumns = [...csvHeaders];
+            renderCSVPreview();
+            setupColumnSelection();
+            setupSorting();
             return;
         }
-
-        // Parse CSV (simple parser)
-        const delimiter = text.includes('\t') ? '\t' : ',';
-        csvHeaders = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
         
-        csvData = [];
-        for (let i = 1; i < Math.min(lines.length, 101); i++) { // Limit to 100 rows for preview
-            const values = lines[i].split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
-            const row = {};
-            csvHeaders.forEach((header, idx) => {
-                row[header] = values[idx] || '';
-            });
-            csvData.push(row);
+        const isExcel = file.name.toLowerCase().endsWith('.xlsx') || file.name.toLowerCase().endsWith('.xls');
+        let text, rows;
+        
+        if (isExcel) {
+            // For Excel files, we'll need to parse on the server or use a client-side library
+            // For now, show a message that Excel preview requires conversion
+            showError('Excel file preview is being processed. Full preview available after upload.');
+            return;
+        } else {
+            text = await file.text();
+            const lines = text.split('\n').filter(line => line.trim());
+            
+            if (lines.length === 0) {
+                showError('File is empty');
+                return;
+            }
+
+            // Parse CSV (simple parser)
+            const delimiter = text.includes('\t') ? '\t' : ',';
+            csvHeaders = lines[0].split(delimiter).map(h => h.trim().replace(/^"|"$/g, ''));
+            
+            csvData = [];
+            for (let i = 1; i < Math.min(lines.length, 101); i++) { // Limit to 100 rows for preview
+                const values = lines[i].split(delimiter).map(v => v.trim().replace(/^"|"$/g, ''));
+                const row = {};
+                csvHeaders.forEach((header, idx) => {
+                    row[header] = values[idx] || '';
+                });
+                csvData.push(row);
+            }
+            
+            rows = lines.length - 1; // Total rows (excluding header)
         }
         
         filteredData = [...csvData];
         selectedColumns = [...csvHeaders];
+        
+        // Store in map for later use
+        fileDataMap.set(file.name, {
+            data: csvData,
+            headers: csvHeaders,
+            rows: rows,
+            file: file
+        });
+        
+        // Update file preview selector
+        updateFilePreviewSelector();
         
         renderCSVPreview();
         setupColumnSelection();
         setupSorting();
         addToHistory(file.name);
     } catch (error) {
-        showError('Error reading CSV file: ' + error.message);
+        showError('Error reading file: ' + error.message);
+    }
+}
+
+// Update file preview selector dropdown
+function updateFilePreviewSelector() {
+    const selector = document.getElementById('filePreviewSelector');
+    const select = document.getElementById('previewFileSelect');
+    
+    if (uploadedFiles.length > 1) {
+        selector.style.display = 'block';
+        select.innerHTML = '<option value="">Select a file to preview</option>';
+        
+        uploadedFiles.forEach((file, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = file.name;
+            if (index === 0) option.selected = true;
+            select.appendChild(option);
+        });
+        
+        select.addEventListener('change', async (e) => {
+            const index = parseInt(e.target.value);
+            if (index >= 0 && index < uploadedFiles.length) {
+                await loadCSVPreview(uploadedFiles[index], index);
+            }
+        });
+    } else {
+        selector.style.display = 'none';
     }
 }
 
@@ -831,7 +1161,7 @@ function renderHistory() {
 
 renderHistory();
 
-// Enhanced Form Submission (with multiple file support)
+// Enhanced Form Submission (with multiple file support, download options, per-file progress)
 uploadForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
@@ -843,16 +1173,33 @@ uploadForm.addEventListener('submit', async (e) => {
     
     hideMessages();
     setLoadingState(true);
-    updateProgress(10);
+    updateProgress(10, 'Starting conversion...');
+    
+    // Show download options if multiple files
+    if (files.length > 1) {
+        document.getElementById('downloadOptions').style.display = 'block';
+    }
+    document.getElementById('customFilename').style.display = 'block';
     
     try {
+        const downloadType = document.querySelector('input[name="downloadType"]:checked')?.value || 'combined';
+        const customFilename = document.getElementById('pdfFilename').value.trim();
+        
+        // Save current settings for undo
+        saveSettingsToHistory();
+        
         const formData = new FormData();
         
         // Append all files
         files.forEach((file, index) => {
             formData.append(`csvFile${index}`, file);
+            updateFileProgress(index, 0, `Uploading ${file.name}...`);
         });
         formData.append('fileCount', files.length.toString());
+        formData.append('downloadType', downloadType);
+        if (customFilename) {
+            formData.append('customFilename', customFilename);
+        }
         
         // Collect all options
         const options = {
@@ -868,52 +1215,257 @@ uploadForm.addEventListener('submit', async (e) => {
         };
         
         formData.append('options', JSON.stringify(options));
-        updateProgress(30);
+        updateProgress(20, 'Processing files...');
+        
+        // Simulate per-file progress (in real implementation, this would come from server)
+        for (let i = 0; i < files.length; i++) {
+            updateFileProgress(i, 30 + (i * 50 / files.length), `Processing ${files[i].name}...`);
+            await new Promise(resolve => setTimeout(resolve, 100)); // Simulate processing
+        }
+        
+        updateProgress(60, 'Generating PDF...');
         
         const response = await fetch('/api/convert', {
             method: 'POST',
             body: formData
         });
         
-        updateProgress(70);
+        updateProgress(80, 'Finalizing...');
         
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({ error: 'Failed to convert files' }));
-            throw new Error(errorData.error || 'Failed to convert CSV to PDF');
+            const errorMsg = errorData.error || 'Failed to convert CSV to PDF';
+            const fileErrors = errorData.fileErrors || [];
+            
+            if (fileErrors.length > 0) {
+                const errorDetails = fileErrors.map(e => `${e.filename}: ${e.error}`).join('\n');
+                throw new Error(`${errorMsg}\n\nFile Errors:\n${errorDetails}`);
+            }
+            throw new Error(errorMsg);
         }
         
-        updateProgress(90);
+        updateProgress(90, 'Preparing download...');
         
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
+        const contentType = response.headers.get('content-type');
+        let blob, downloadUrl, filename;
         
-        downloadLink.href = url;
-        // Generate a combined filename
-        const baseName = files.length === 1 
-            ? files[0].name.replace(/\.(csv|tsv|xlsx|xls)$/i, '')
-            : `combined_${files.length}_files`;
-        downloadLink.download = `${baseName}.pdf`;
+        if (contentType && contentType.includes('application/zip')) {
+            // Separate PDFs in ZIP
+            blob = await response.blob();
+            downloadUrl = window.URL.createObjectURL(blob);
+            filename = customFilename ? `${customFilename}.zip` : `pdf_files_${Date.now()}.zip`;
+        } else {
+            // Combined PDF
+            blob = await response.blob();
+            downloadUrl = window.URL.createObjectURL(blob);
+            filename = customFilename 
+                ? `${customFilename}.pdf`
+                : (files.length === 1 
+                    ? files[0].name.replace(/\.(csv|tsv|xlsx|xls)$/i, '.pdf')
+                    : `combined_${files.length}_files.pdf`);
+        }
         
-        updateProgress(100);
-        showSuccess();
+        downloadLink.href = downloadUrl;
+        downloadLink.download = filename;
+        
+        // Store PDF URL for preview
+        window.lastPdfUrl = downloadUrl;
+        
+        updateProgress(100, 'Complete!');
+        showSuccess(downloadUrl);
         files.forEach(file => addToHistory(file.name));
         
         setTimeout(() => {
             document.getElementById('progressBar').style.display = 'none';
+            document.querySelectorAll('.file-progress-item').forEach(el => el.remove());
         }, 2000);
         
     } catch (error) {
         showError(error.message || 'An error occurred while converting the files. Please try again.');
         document.getElementById('progressBar').style.display = 'none';
+        document.querySelectorAll('.file-progress-item').forEach(el => el.remove());
     } finally {
         setLoadingState(false);
     }
 });
 
+// Update per-file progress
+function updateFileProgress(fileIndex, percent, message) {
+    const fileProgress = document.getElementById('fileProgress');
+    fileProgress.style.display = 'block';
+    
+    let progressItem = document.querySelector(`.file-progress-item[data-index="${fileIndex}"]`);
+    if (!progressItem) {
+        progressItem = document.createElement('div');
+        progressItem.className = 'file-progress-item';
+        progressItem.dataset.index = fileIndex;
+        fileProgress.appendChild(progressItem);
+    }
+    
+    const fileName = uploadedFiles[fileIndex]?.name || `File ${fileIndex + 1}`;
+    progressItem.innerHTML = `
+        <div class="file-progress-name">${fileName}</div>
+        <div class="file-progress-bar">
+            <div class="file-progress-fill" style="width: ${percent}%"></div>
+        </div>
+        <div class="file-progress-text">${message || `${percent}%`}</div>
+    `;
+}
+
+// Update overall progress with message
+function updateProgress(percent, message = '') {
+    const progressBar = document.getElementById('progressBar');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+    
+    progressBar.style.display = 'block';
+    progressFill.style.width = percent + '%';
+    progressText.textContent = message ? `${percent}% - ${message}` : percent + '%';
+}
+
+// Undo/Redo for settings
+function saveSettingsToHistory() {
+    const settings = {
+        formatPrompt: formatPrompt.value,
+        layout: document.getElementById('layoutType').value,
+        orientation: document.getElementById('orientation').value,
+        fontSize: document.getElementById('fontSize').value,
+        headerColor: document.getElementById('headerColor').value,
+        textColor: document.getElementById('textColor').value,
+        advanced: collectAdvancedOptions()
+    };
+    
+    // Remove future history if we're not at the end
+    if (currentHistoryIndex < settingsHistory.length - 1) {
+        settingsHistory = settingsHistory.slice(0, currentHistoryIndex + 1);
+    }
+    
+    settingsHistory.push(settings);
+    currentHistoryIndex = settingsHistory.length - 1;
+    
+    // Limit history size
+    if (settingsHistory.length > 50) {
+        settingsHistory.shift();
+        currentHistoryIndex--;
+    }
+}
+
+function undoSettings() {
+    if (currentHistoryIndex > 0) {
+        currentHistoryIndex--;
+        applySettings(settingsHistory[currentHistoryIndex]);
+    }
+}
+
+function redoSettings() {
+    if (currentHistoryIndex < settingsHistory.length - 1) {
+        currentHistoryIndex++;
+        applySettings(settingsHistory[currentHistoryIndex]);
+    }
+}
+
+function applySettings(settings) {
+    if (!settings) return;
+    
+    formatPrompt.value = settings.formatPrompt || '';
+    document.getElementById('layoutType').value = settings.layout || 'list';
+    document.getElementById('orientation').value = settings.orientation || 'portrait';
+    document.getElementById('fontSize').value = settings.fontSize || 11;
+    document.getElementById('headerColor').value = settings.headerColor || '#667eea';
+    document.getElementById('textColor').value = settings.textColor || '#4a5a65';
+    
+    if (settings.advanced) {
+        if (settings.advanced.header) document.getElementById('headerText').value = settings.advanced.header;
+        if (settings.advanced.footer) document.getElementById('footerText').value = settings.advanced.footer;
+        // Apply other advanced settings...
+    }
+    
+    showPreview();
+}
+
+// Export/Import Settings
+function exportSettings() {
+    const settings = {
+        formatPrompt: formatPrompt.value,
+        layout: document.getElementById('layoutType').value,
+        orientation: document.getElementById('orientation').value,
+        fontSize: document.getElementById('fontSize').value,
+        headerColor: document.getElementById('headerColor').value,
+        textColor: document.getElementById('textColor').value,
+        advanced: collectAdvancedOptions(),
+        version: '1.0',
+        exportDate: new Date().toISOString()
+    };
+    
+    const json = JSON.stringify(settings, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pdf-settings-${Date.now()}.json`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+}
+
+function importSettings(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const settings = JSON.parse(e.target.result);
+            applySettings(settings);
+            alert('Settings imported successfully!');
+        } catch (error) {
+            alert('Error importing settings: ' + error.message);
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = ''; // Reset input
+}
+
+// Add export/import buttons to Templates tab
+const templatesTab = document.getElementById('templatesTab');
+if (templatesTab) {
+    const exportImportDiv = document.createElement('div');
+    exportImportDiv.className = 'export-import-section';
+    exportImportDiv.innerHTML = `
+        <h3>Export/Import Settings</h3>
+        <div class="template-controls">
+            <button type="button" id="exportSettings" class="export-btn">📤 Export Settings</button>
+            <label for="importSettings" class="import-btn">
+                📥 Import Settings
+                <input type="file" id="importSettings" accept=".json" style="display: none;">
+            </label>
+        </div>
+    `;
+    templatesTab.appendChild(exportImportDiv);
+    
+    document.getElementById('exportSettings').addEventListener('click', exportSettings);
+    document.getElementById('importSettings').addEventListener('change', importSettings);
+}
+
 // Keyboard Shortcuts
 document.addEventListener('keydown', (e) => {
+    // Don't trigger shortcuts when typing in inputs
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+        // Allow some shortcuts in inputs
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+            e.preventDefault();
+            undoSettings();
+            return;
+        }
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+            e.preventDefault();
+            redoSettings();
+            return;
+        }
+        return;
+    }
+    
     // Ctrl/Cmd + S to save template
-    if ((e.ctrlKey || e.metaKey) && e.key === 's' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         document.getElementById('templateName').focus();
     }
@@ -926,13 +1478,39 @@ document.addEventListener('keydown', (e) => {
         }
     }
     
+    // Ctrl/Cmd + Z to undo
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undoSettings();
+    }
+    
+    // Ctrl/Cmd + Y or Shift+Z to redo
+    if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        redoSettings();
+    }
+    
+    // Delete key to remove selected file (if file list is focused)
+    if (e.key === 'Delete' && document.activeElement.classList.contains('file-item')) {
+        const index = parseInt(document.activeElement.dataset.index);
+        if (!isNaN(index)) {
+            removeFile(index);
+        }
+    }
+    
     // Number keys for tabs (1-5)
-    if (e.key >= '1' && e.key <= '5' && !e.ctrlKey && !e.metaKey && e.target.tagName !== 'INPUT' && e.target.tagName !== 'TEXTAREA') {
+    if (e.key >= '1' && e.key <= '5' && !e.ctrlKey && !e.metaKey) {
         const tabIndex = parseInt(e.key) - 1;
         const tabs = Array.from(tabButtons);
         if (tabs[tabIndex]) {
             tabs[tabIndex].click();
         }
+    }
+    
+    // Escape to close previews
+    if (e.key === 'Escape') {
+        pdfPreviewContainer.style.display = 'none';
+        previewBox.style.display = 'none';
     }
 });
 

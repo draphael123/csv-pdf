@@ -225,6 +225,347 @@ h1 {
     margin-left: 10px;
 }
 
+.file-stats {
+    display: flex;
+    gap: 15px;
+    padding: 10px;
+    margin-bottom: 10px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 8px;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    display: flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.stat-label {
+    font-weight: 600;
+    color: #667eea;
+    font-size: 0.9rem;
+}
+
+.stat-value {
+    font-weight: 700;
+    color: #764ba2;
+    font-size: 0.9rem;
+}
+
+.drag-handle {
+    cursor: move;
+    color: #999;
+    margin-right: 8px;
+    font-size: 1.2rem;
+    user-select: none;
+}
+
+.file-item.dragging {
+    opacity: 0.5;
+    background: rgba(102, 126, 234, 0.2);
+}
+
+.remove-file-btn {
+    background: #ff6b6b;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: 10px;
+    transition: all 0.2s ease;
+}
+
+.remove-file-btn:hover {
+    background: #ff5252;
+    transform: scale(1.1);
+}
+
+.file-item-info {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    font-size: 0.85rem;
+    color: #666;
+}
+
+.file-item-rows {
+    color: #667eea;
+    font-weight: 500;
+}
+
+.file-preview-selector {
+    margin-bottom: 15px;
+    padding: 10px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+}
+
+.file-preview-selector label {
+    font-weight: 600;
+    color: #667eea;
+    margin-right: 10px;
+}
+
+.file-preview-selector select {
+    padding: 8px 12px;
+    border: 2px solid #667eea;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    background: white;
+    cursor: pointer;
+}
+
+.file-progress {
+    margin-top: 10px;
+}
+
+.file-progress-item {
+    margin-bottom: 8px;
+    padding: 8px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 6px;
+}
+
+.file-progress-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 4px;
+}
+
+.file-progress-bar {
+    width: 100%;
+    height: 6px;
+    background: rgba(102, 126, 234, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+    margin-bottom: 4px;
+}
+
+.file-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #667eea, #764ba2);
+    transition: width 0.3s ease;
+}
+
+.file-progress-text {
+    font-size: 0.75rem;
+    color: #666;
+}
+
+.download-options {
+    margin: 15px 0;
+    padding: 15px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(102, 126, 234, 0.2);
+}
+
+.download-options label {
+    display: block;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 10px;
+}
+
+.option-radio {
+    display: flex;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.option-radio input[type="radio"] {
+    margin-right: 8px;
+    cursor: pointer;
+}
+
+.option-radio label {
+    margin: 0;
+    font-weight: normal;
+    color: #4a5a65;
+    cursor: pointer;
+}
+
+.custom-filename {
+    margin: 15px 0;
+    padding: 15px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+}
+
+.custom-filename label {
+    display: block;
+    font-weight: 600;
+    color: #667eea;
+    margin-bottom: 8px;
+}
+
+.custom-filename input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #667eea;
+    border-radius: 6px;
+    font-size: 0.9rem;
+}
+
+.download-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 15px;
+    flex-wrap: wrap;
+}
+
+.preview-button {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.preview-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(79, 172, 254, 0.4);
+}
+
+.pdf-preview-container {
+    margin-top: 20px;
+    padding: 15px;
+    background: white;
+    border-radius: 8px;
+    border: 2px solid #667eea;
+}
+
+.prompt-examples {
+    margin-top: 10px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.example-btn {
+    padding: 6px 12px;
+    background: rgba(102, 126, 234, 0.1);
+    border: 1px solid #667eea;
+    border-radius: 6px;
+    color: #667eea;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.example-btn:hover {
+    background: #667eea;
+    color: white;
+    transform: translateY(-1px);
+}
+
+.export-import-section {
+    margin-top: 20px;
+    padding: 15px;
+    background: rgba(102, 126, 234, 0.05);
+    border-radius: 8px;
+}
+
+.export-import-section h3 {
+    margin-bottom: 10px;
+    color: #667eea;
+}
+
+.export-btn, .import-btn {
+    padding: 10px 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-right: 10px;
+    display: inline-block;
+}
+
+.import-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.export-btn:hover, .import-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 768px) {
+    .file-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 8px;
+    }
+    
+    .file-item-info {
+        width: 100%;
+        justify-content: space-between;
+    }
+    
+    .remove-file-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+    }
+    
+    .file-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+    
+    .download-actions {
+        flex-direction: column;
+    }
+    
+    .download-actions button,
+    .download-actions a {
+        width: 100%;
+        text-align: center;
+    }
+    
+    .prompt-examples {
+        flex-direction: column;
+    }
+    
+    .example-btn {
+        width: 100%;
+    }
+    
+    .pdf-preview-container iframe {
+        height: 400px;
+    }
+    
+    .card {
+        padding: 20px;
+    }
+    
+    .tabs {
+        flex-wrap: wrap;
+    }
+    
+    .tab-button {
+        font-size: 0.85rem;
+        padding: 8px 12px;
+    }
+}
+
 .prompt-section {
     margin-bottom: 20px;
 }

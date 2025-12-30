@@ -1,6 +1,8 @@
 const { parse } = require('csv-parse/sync');
 const PDFDocument = require('pdfkit');
 const Busboy = require('busboy');
+const XLSX = require('xlsx');
+const archiver = require('archiver');
 
 // Parse formatting prompt to extract preferences
 function parseFormatPrompt(prompt) {
@@ -155,11 +157,124 @@ function parseFormatPrompt(prompt) {
   }
 
   if (lowerPrompt.includes('bold') || lowerPrompt.includes('strong')) {
-    // Could add bold font option
+    options.boldHeaders = true;
   }
 
-  if (lowerPrompt.includes('spacing') || lowerPrompt.includes('space')) {
-    // Could add spacing options
+  // Parse margins
+  const marginMatch = lowerPrompt.match(/(\d+)\s*px\s*margins?/i);
+  if (marginMatch) {
+    options.margin = parseInt(marginMatch[1]);
+  } else if (lowerPrompt.includes('tight spacing') || lowerPrompt.includes('narrow margins')) {
+    options.margin = 30;
+  } else if (lowerPrompt.includes('wide margins') || lowerPrompt.includes('spacious')) {
+    options.margin = 80;
+  }
+
+  // Parse header text
+  const headerMatch = lowerPrompt.match(/header:\s*["']?([^"'\n]+)["']?/i);
+  if (headerMatch) {
+    options.customHeader = headerMatch[1].trim();
+  }
+
+  // Parse footer text
+  const footerMatch = lowerPrompt.match(/footer:\s*["']?([^"'\n]+)["']?/i);
+  if (footerMatch) {
+    options.customFooter = footerMatch[1].trim();
+  }
+
+  // Parse page numbers
+  if (lowerPrompt.includes('page numbers') || lowerPrompt.includes('add page numbers')) {
+    options.showPageNumbers = true;
+  }
+
+  // Parse date in footer
+  if (lowerPrompt.includes('show date') || lowerPrompt.includes('date in footer')) {
+    options.showDate = true;
+  }
+
+  // Parse totals calculation
+  if (lowerPrompt.includes('calculate totals') || lowerPrompt.includes('show totals') || 
+      lowerPrompt.includes('add totals')) {
+    options.calculateTotals = true;
+  }
+
+  // Parse averages calculation
+  if (lowerPrompt.includes('calculate averages') || lowerPrompt.includes('show averages') || 
+      lowerPrompt.includes('add averages')) {
+    options.calculateAverages = true;
+  }
+
+  // Parse alternating rows
+  if (lowerPrompt.includes('alternating rows') || lowerPrompt.includes('zebra stripes') ||
+      lowerPrompt.includes('striped rows')) {
+    options.alternatingRows = true;
+  }
+
+  // Parse border styles
+  if (lowerPrompt.includes('no borders') || lowerPrompt.includes('borderless')) {
+    options.borderStyle = 'none';
+  } else if (lowerPrompt.includes('horizontal borders') || lowerPrompt.includes('horizontal only')) {
+    options.borderStyle = 'horizontal';
+  } else if (lowerPrompt.includes('vertical borders') || lowerPrompt.includes('vertical only')) {
+    options.borderStyle = 'vertical';
+  }
+
+  // Parse column width
+  if (lowerPrompt.includes('equal column width') || lowerPrompt.includes('equal width')) {
+    options.columnWidth = 'equal';
+  } else if (lowerPrompt.includes('auto-fit') || lowerPrompt.includes('auto fit')) {
+    options.columnWidth = 'auto';
+  }
+
+  // Parse custom title
+  const titleMatch = lowerPrompt.match(/custom title:\s*["']?([^"'\n]+)["']?/i) ||
+                     lowerPrompt.match(/title:\s*["']?([^"'\n]+)["']?/i);
+  if (titleMatch) {
+    options.customTitle = titleMatch[1].trim();
+  }
+
+  // Parse metadata
+  const metadataMatch = lowerPrompt.match(/metadata:\s*([^"\n]+)/i);
+  if (metadataMatch) {
+    const metadataStr = metadataMatch[1];
+    const pairs = metadataStr.split(',').map(p => p.trim());
+    options.metadata = {};
+    pairs.forEach(pair => {
+      const [key, value] = pair.split('=').map(s => s.trim());
+      if (key && value) {
+        options.metadata[key] = value;
+      }
+    });
+  }
+
+  // Parse password protection
+  if (lowerPrompt.includes('password protect') || lowerPrompt.includes('password protection')) {
+    options.passwordProtect = true;
+    const passwordMatch = lowerPrompt.match(/password:\s*["']?([^"'\n]+)["']?/i);
+    if (passwordMatch) {
+      options.password = passwordMatch[1].trim();
+    }
+  }
+
+  // Parse highlight conditions
+  const highlightMatch = lowerPrompt.match(/highlight\s+(?:values?|rows?)\s*(>|<|>=|<=|=)\s*(\d+)/i);
+  if (highlightMatch) {
+    options.highlightCondition = {
+      operator: highlightMatch[1],
+      value: parseFloat(highlightMatch[2]),
+      color: '#ff6b6b'
+    };
+  }
+
+  // Parse sort instructions
+  const sortMatch = lowerPrompt.match(/sort\s+by\s+(["']?)(\w+)\1/i);
+  if (sortMatch) {
+    options.sortBy = sortMatch[2];
+    if (lowerPrompt.includes('descending') || lowerPrompt.includes('desc')) {
+      options.sortOrder = 'desc';
+    } else {
+      options.sortOrder = 'asc';
+    }
   }
 
   return options;
@@ -426,20 +541,44 @@ module.exports = async (req, res) => {
         if (name.startsWith('csvFile')) {
           const fileData = {
             filename: info.filename || `file_${csvFiles.length}`,
-            content: ''
+            content: '',
+            isBinary: false,
+            buffer: null
           };
           
-          file.setEncoding('utf8');
+          // Check if it's an Excel file
+          const isExcel = fileData.filename.toLowerCase().endsWith('.xlsx') || 
+                         fileData.filename.toLowerCase().endsWith('.xls');
           
-          file.on('data', (data) => {
-            fileData.content += data;
-          });
+          if (isExcel) {
+            // Handle Excel files as binary
+            fileData.isBinary = true;
+            const chunks = [];
+            
+            file.on('data', (data) => {
+              chunks.push(data);
+            });
 
-          file.on('end', () => {
-            if (fileData.content.trim().length > 0) {
-              csvFiles.push(fileData);
-            }
-          });
+            file.on('end', () => {
+              fileData.buffer = Buffer.concat(chunks);
+              if (fileData.buffer.length > 0) {
+                csvFiles.push(fileData);
+              }
+            });
+          } else {
+            // Handle CSV/TSV files as text
+            file.setEncoding('utf8');
+            
+            file.on('data', (data) => {
+              fileData.content += data;
+            });
+
+            file.on('end', () => {
+              if (fileData.content.trim().length > 0) {
+                csvFiles.push(fileData);
+              }
+            });
+          }
         } else {
           file.resume(); // Drain the file stream
         }
@@ -453,9 +592,24 @@ module.exports = async (req, res) => {
         } else if (name === 'fileCount') {
           fileCount = parseInt(value) || 1;
           console.log('File count:', fileCount);
+        } else if (name === 'downloadType') {
+          formatPrompt = formatPrompt || {};
+          if (typeof formatPrompt === 'object') {
+            formatPrompt.downloadType = value;
+          }
+        } else if (name === 'customFilename') {
+          formatPrompt = formatPrompt || {};
+          if (typeof formatPrompt === 'object') {
+            formatPrompt.customFilename = value;
+          }
         } else if (name === 'options') {
           try {
-            formatPrompt = JSON.parse(value);
+            const parsed = JSON.parse(value);
+            if (typeof formatPrompt === 'object') {
+              Object.assign(formatPrompt, parsed);
+            } else {
+              formatPrompt = parsed;
+            }
             console.log('Received JSON options');
           } catch (e) {
             console.log('Options not JSON, using as prompt');
@@ -493,13 +647,31 @@ module.exports = async (req, res) => {
     const allFileNames = [];
     const allHeadersSet = new Set();
     
+    const fileErrors = [];
+    
     for (const fileData of csvFiles) {
       try {
-        const records = parse(fileData.content, {
-          columns: true,
-          skip_empty_lines: true,
-          trim: true
-        });
+        let records = [];
+        
+        if (fileData.isBinary) {
+          // Parse Excel file
+          const workbook = XLSX.read(fileData.buffer, { type: 'buffer' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          
+          // Convert to JSON with header row
+          records = XLSX.utils.sheet_to_json(worksheet, {
+            defval: '', // Default value for empty cells
+            raw: false // Convert all values to strings
+          });
+        } else {
+          // Parse CSV/TSV file
+          records = parse(fileData.content, {
+            columns: true,
+            skip_empty_lines: true,
+            trim: true
+          });
+        }
 
         if (records.length > 0) {
           // Collect all headers from all files
@@ -523,11 +695,22 @@ module.exports = async (req, res) => {
           });
           allRecords.push(...records);
           allFileNames.push(fileData.filename);
+        } else {
+          fileErrors.push({ filename: fileData.filename, error: 'File is empty or has no valid data' });
         }
       } catch (parseError) {
         console.error(`Error parsing file ${fileData.filename}:`, parseError);
+        fileErrors.push({ filename: fileData.filename, error: parseError.message || 'Failed to parse file' });
         // Continue with other files even if one fails
       }
+    }
+    
+    // Store file errors for response
+    if (fileErrors.length > 0 && allRecords.length === 0) {
+      return res.status(400).json({ 
+        error: 'All files failed to parse',
+        fileErrors: fileErrors
+      });
     }
 
     if (allRecords.length === 0) {

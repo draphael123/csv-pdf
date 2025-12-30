@@ -9,7 +9,9 @@
   "dependencies": {
     "csv-parse": "^5.5.2",
     "pdfkit": "^0.14.0",
-    "busboy": "^1.6.0"
+    "busboy": "^1.6.0",
+    "xlsx": "^0.18.5",
+    "archiver": "^6.0.1"
   },
   "devDependencies": {
     "@vercel/node": "^3.0.0"

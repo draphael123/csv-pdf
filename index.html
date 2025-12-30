@@ -39,6 +39,12 @@
 
                 <!-- Preview Tab -->
                 <div class="tab-content" id="previewTab">
+                    <div class="file-preview-selector" id="filePreviewSelector" style="display: none;">
+                        <label>Preview File:</label>
+                        <select id="previewFileSelect">
+                            <option value="">Select a file to preview</option>
+                        </select>
+                    </div>
                     <div id="csvPreview" class="csv-preview">
                         <p class="preview-placeholder">Upload a file to see preview</p>
                     </div>
@@ -67,17 +73,34 @@
                 <!-- Format Tab -->
                 <div class="tab-content" id="formatTab">
                     <div class="prompt-section">
-                        <label for="formatPrompt" class="prompt-label">Formatting Instructions (Optional)</label>
+                        <label for="formatPrompt" class="prompt-label">Advanced PDF Modification Prompt (Optional)</label>
                         <div class="prompt-input-wrapper">
                             <textarea 
                                 id="formatPrompt" 
                                 class="prompt-input" 
-                                placeholder="Example: Make it a table format, use landscape orientation, blue headers, larger font size..."
-                                rows="3"
+                                placeholder='Example: "Create a landscape table with blue headers, 12pt font, add page numbers, include totals for numeric columns, use alternating row colors, set margins to 30px, add custom header text: Monthly Report"'
+                                rows="4"
                             ></textarea>
                             <button type="button" class="preview-button" id="previewButton">Preview</button>
                         </div>
-                        <p class="prompt-hint">Describe how you want the PDF formatted (e.g., "table format", "landscape", "blue colors", "larger fonts")</p>
+                        <p class="prompt-hint">
+                            <strong>Supported Parameters:</strong><br>
+                            • Layout: "table format", "list format", "grid layout"<br>
+                            • Orientation: "landscape", "portrait", "horizontal", "vertical"<br>
+                            • Colors: "blue headers", "red text", "green background", hex codes (#FF5733)<br>
+                            • Font: "12pt font", "large text", "small font", "bold headers"<br>
+                            • Pages: "add page numbers", "show date in footer", "header: Your Text", "footer: Your Text"<br>
+                            • Tables: "alternating rows", "no borders", "equal column width", "auto-fit columns"<br>
+                            • Data: "calculate totals", "show averages", "highlight values > 100", "sort by column name"<br>
+                            • Spacing: "30px margins", "tight spacing", "wide margins"<br>
+                            • Advanced: "password protect", "custom title: Your Title", "metadata: author=John Doe"
+                        </p>
+                        <div class="prompt-examples">
+                            <strong>Quick Examples:</strong>
+                            <button type="button" class="example-btn" data-prompt='landscape table with blue headers and 12pt font'>Landscape Table</button>
+                            <button type="button" class="example-btn" data-prompt='portrait list with green headers, large font, add page numbers'>Portrait List</button>
+                            <button type="button" class="example-btn" data-prompt='table format, alternating row colors, calculate totals, show date in footer'>Table with Totals</button>
+                        </div>
                         <div id="previewBox" class="preview-box" style="display: none;">
                             <div class="preview-header">Formatting Preview</div>
                             <div id="previewContent" class="preview-content"></div>
@@ -255,6 +278,21 @@
                     </div>
                 </div>
                 
+                <div class="download-options" id="downloadOptions" style="display: none;">
+                    <label>Download Options:</label>
+                    <div class="option-radio">
+                        <input type="radio" id="downloadCombined" name="downloadType" value="combined" checked>
+                        <label for="downloadCombined">Combine into one PDF</label>
+                    </div>
+                    <div class="option-radio">
+                        <input type="radio" id="downloadSeparate" name="downloadType" value="separate">
+                        <label for="downloadSeparate">Separate PDFs (ZIP)</label>
+                    </div>
+                </div>
+                <div class="custom-filename" id="customFilename" style="display: none;">
+                    <label for="pdfFilename">Custom PDF Filename (optional):</label>
+                    <input type="text" id="pdfFilename" placeholder="Leave empty for auto-generated name">
+                </div>
                 <button type="submit" class="convert-button" id="convertButton">
                     <span id="buttonText">Convert to PDF with Formatting</span>
                     <span id="buttonLoader" class="loader" style="display: none;"></span>
@@ -262,6 +300,7 @@
                 <div id="progressBar" class="progress-bar" style="display: none;">
                     <div class="progress-fill" id="progressFill"></div>
                     <span class="progress-text" id="progressText">0%</span>
+                    <div id="fileProgress" class="file-progress" style="display: none;"></div>
                 </div>
                 <p class="submit-hint">The formatting instructions above will be applied when you click the button</p>
             </form>
@@ -276,7 +315,13 @@
             <div id="successMessage" class="success-message" style="display: none;">
                 <div class="success-icon">✓</div>
                 <p>Your PDF has been generated successfully</p>
-                <a id="downloadLink" href="#" download class="download-button">Download PDF</a>
+                <div class="download-actions">
+                    <a id="downloadLink" href="#" download class="download-button">Download PDF</a>
+                    <button type="button" id="previewPdfBtn" class="preview-button">Preview PDF</button>
+                </div>
+                <div id="pdfPreviewContainer" class="pdf-preview-container" style="display: none;">
+                    <iframe id="pdfPreviewFrame" src="" style="width: 100%; height: 600px; border: 1px solid #ddd;"></iframe>
+                </div>
             </div>
             
             <div id="errorMessage" class="error-message" style="display: none;">
