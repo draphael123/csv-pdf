@@ -29,16 +29,11 @@
                 <!-- Upload Tab -->
                 <div class="tab-content active" id="uploadTab">
                     <div class="file-upload-area" id="dropZone">
-                        <input type="file" id="csvFile" accept=".csv,.xlsx,.xls,.tsv" required>
+                        <input type="file" id="csvFile" accept=".csv,.xlsx,.xls,.tsv" multiple required>
                         <div class="upload-icon">📄</div>
-                        <p class="upload-text">Click to select a CSV/Excel file or drag and drop</p>
+                        <p class="upload-text">Click to select CSV/Excel files or drag and drop (multiple files supported)</p>
                         <p class="file-name" id="fileName"></p>
-                    </div>
-                    
-                    <div class="batch-upload" id="batchUpload" style="display: none;">
-                        <label>Batch Processing:</label>
-                        <input type="file" id="batchFiles" multiple accept=".csv,.xlsx,.xls,.tsv">
-                        <p class="hint">Select multiple files to convert at once</p>
+                        <div id="fileList" class="file-list"></div>
                     </div>
                 </div>
 

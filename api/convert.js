@@ -416,22 +416,29 @@ module.exports = async (req, res) => {
   try {
     // Parse multipart form data
     const busboy = Busboy({ headers: req.headers });
-    let csvContent = '';
+    const csvFiles = []; // Array to store multiple files
     let formatPrompt = '';
-    let fileReceived = false;
+    let fileCount = 1;
 
     const parsePromise = new Promise((resolve, reject) => {
       busboy.on('file', (name, file, info) => {
-        if (name === 'csvFile') {
-          fileReceived = true;
+        // Handle multiple files (csvFile0, csvFile1, etc.) or single file (csvFile)
+        if (name.startsWith('csvFile')) {
+          const fileData = {
+            filename: info.filename || `file_${csvFiles.length}`,
+            content: ''
+          };
+          
           file.setEncoding('utf8');
           
           file.on('data', (data) => {
-            csvContent += data;
+            fileData.content += data;
           });
 
           file.on('end', () => {
-            // File reading is complete
+            if (fileData.content.trim().length > 0) {
+              csvFiles.push(fileData);
+            }
           });
         } else {
           file.resume(); // Drain the file stream
@@ -443,6 +450,9 @@ module.exports = async (req, res) => {
         if (name === 'formatPrompt') {
           formatPrompt = value;
           console.log('Set formatPrompt to:', formatPrompt);
+        } else if (name === 'fileCount') {
+          fileCount = parseInt(value) || 1;
+          console.log('File count:', fileCount);
         } else if (name === 'options') {
           try {
             formatPrompt = JSON.parse(value);
@@ -455,7 +465,7 @@ module.exports = async (req, res) => {
       });
 
       busboy.on('finish', () => {
-        console.log('Busboy finished parsing. formatPrompt:', formatPrompt);
+        console.log('Busboy finished parsing. Files received:', csvFiles.length);
         resolve();
       });
 
@@ -469,28 +479,64 @@ module.exports = async (req, res) => {
 
     await parsePromise;
 
-    if (!fileReceived || !csvContent) {
-      return res.status(400).json({ error: 'No CSV file provided or file is empty' });
+    if (csvFiles.length === 0) {
+      return res.status(400).json({ error: 'No CSV files provided or files are empty' });
     }
 
     // Debug: Log received prompt
     console.log('Received formatPrompt:', formatPrompt);
     console.log('FormatPrompt length:', formatPrompt ? formatPrompt.length : 0);
+    console.log('Processing', csvFiles.length, 'file(s)');
 
-    // Parse CSV
-    let records = parse(csvContent, {
-      columns: true,
-      skip_empty_lines: true,
-      trim: true
-    });
+    // Parse all CSV files
+    const allRecords = [];
+    const allFileNames = [];
+    const allHeadersSet = new Set();
+    
+    for (const fileData of csvFiles) {
+      try {
+        const records = parse(fileData.content, {
+          columns: true,
+          skip_empty_lines: true,
+          trim: true
+        });
 
-    if (records.length === 0) {
-      return res.status(400).json({ error: 'CSV file is empty or has no valid data' });
+        if (records.length > 0) {
+          // Collect all headers from all files
+          records.forEach(record => {
+            Object.keys(record).forEach(key => {
+              if (key !== '__sourceFile') {
+                allHeadersSet.add(key);
+              }
+            });
+          });
+
+          // Add file identifier to each record for tracking
+          records.forEach(record => {
+            record.__sourceFile = fileData.filename;
+            // Ensure all records have all headers (fill missing with empty string)
+            allHeadersSet.forEach(header => {
+              if (!(header in record)) {
+                record[header] = '';
+              }
+            });
+          });
+          allRecords.push(...records);
+          allFileNames.push(fileData.filename);
+        }
+      } catch (parseError) {
+        console.error(`Error parsing file ${fileData.filename}:`, parseError);
+        // Continue with other files even if one fails
+      }
+    }
+
+    if (allRecords.length === 0) {
+      return res.status(400).json({ error: 'All CSV files are empty or have no valid data' });
     }
 
     // Check if formatPrompt is JSON (new format) or string (old format)
     let options = {};
-    let headers = Object.keys(records[0]);
+    let headers = Array.from(allHeadersSet); // Use union of all headers
     
     if (typeof formatPrompt === 'string' && formatPrompt.startsWith('{')) {
       try {
@@ -500,7 +546,11 @@ module.exports = async (req, res) => {
           records = options.filteredData;
         }
         if (options.selectedColumns && Array.isArray(options.selectedColumns) && options.selectedColumns.length > 0) {
-          headers = options.selectedColumns;
+          // Only use selected columns that exist in the data
+          headers = options.selectedColumns.filter(col => allHeadersSet.has(col));
+          if (headers.length === 0) {
+            headers = Array.from(allHeadersSet);
+          }
         }
       } catch (e) {
         // Fall back to text parsing
@@ -592,11 +642,24 @@ module.exports = async (req, res) => {
     };
 
     // Add title with parsed options
+    const title = options.advanced?.metadata?.title || 
+                  (csvFiles.length === 1 ? 'CSV to PDF Conversion' : `Combined PDF (${csvFiles.length} files)`);
     doc.fontSize(options.titleSize || 24)
        .font('Helvetica-Bold')
        .fillColor(options.colors?.primary || options.headerColor || '#667eea')
-       .text(options.advanced?.metadata?.title || 'CSV to PDF Conversion', { align: 'center' });
-    doc.moveDown(1);
+       .text(title, { align: 'center' });
+    doc.moveDown(0.5);
+    
+    // Add subtitle with file names if multiple files
+    if (csvFiles.length > 1) {
+      doc.fontSize(options.fontSize || 11)
+         .font('Helvetica')
+         .fillColor(options.textColor || '#4a5a65')
+         .text(`Files: ${allFileNames.join(', ')}`, { align: 'center' });
+      doc.moveDown(1);
+    } else {
+      doc.moveDown(1);
+    }
     
     // Add bookmarks for navigation
     if (options.useTable) {
@@ -610,13 +673,68 @@ module.exports = async (req, res) => {
       // Will be added after calculations are generated
     }
 
-    // Process records based on layout preference
-    if (options.useTable) {
-      // Table layout
-      generateTableLayout(doc, records, headers, options, addHeaderFooter);
+    // Group records by source file if multiple files
+    if (csvFiles.length > 1) {
+      const recordsByFile = {};
+      allRecords.forEach(record => {
+        const sourceFile = record.__sourceFile;
+        if (!recordsByFile[sourceFile]) {
+          recordsByFile[sourceFile] = [];
+        }
+        // Remove internal field and ensure all headers are present
+        const cleanRecord = {};
+        headers.forEach(header => {
+          cleanRecord[header] = record[header] || '';
+        });
+        recordsByFile[sourceFile].push(cleanRecord);
+      });
+
+      // Process each file's records separately with section headers
+      Object.entries(recordsByFile).forEach(([fileName, fileRecords], fileIndex) => {
+        // Add section header for each file (except the first one)
+        if (fileIndex > 0) {
+          doc.addPage();
+          if (addHeaderFooter) {
+            addHeaderFooter(1, 1);
+          }
+        }
+
+        // Add file section title
+        doc.fontSize(options.titleSize - 4 || 20)
+           .font('Helvetica-Bold')
+           .fillColor(options.colors?.primary || options.headerColor || '#667eea')
+           .text(`File: ${fileName}`, { align: 'left' });
+        doc.moveDown(0.8);
+        
+        // Draw separator line
+        doc.strokeColor(options.colors?.secondary || options.colors?.primary || '#667eea')
+           .lineWidth(2)
+           .moveTo(50, doc.y)
+           .lineTo(doc.page.width - 50, doc.y)
+           .stroke();
+        doc.moveDown(1);
+
+        // Process records based on layout preference
+        if (options.useTable) {
+          generateTableLayout(doc, fileRecords, headers, options, addHeaderFooter);
+        } else {
+          generateListLayout(doc, fileRecords, headers, options, addHeaderFooter);
+        }
+      });
     } else {
-      // List layout (original)
-      generateListLayout(doc, records, headers, options, addHeaderFooter);
+      // Single file - process normally (remove internal field)
+      const cleanRecords = allRecords.map(record => {
+        const clean = { ...record };
+        delete clean.__sourceFile;
+        return clean;
+      });
+
+      // Process records based on layout preference
+      if (options.useTable) {
+        generateTableLayout(doc, cleanRecords, headers, options, addHeaderFooter);
+      } else {
+        generateListLayout(doc, cleanRecords, headers, options, addHeaderFooter);
+      }
     }
 
     // Finalize PDF

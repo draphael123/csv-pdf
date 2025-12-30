@@ -37,15 +37,40 @@ function updateVisitorCounter() {
 // Initialize visitor counter on page load
 updateVisitorCounter();
 
-// Handle file selection
+// Handle file selection (multiple files)
 csvFileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        fileName.textContent = `Selected: ${file.name}`;
-        fileName.style.display = 'block';
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+        displayFileList(files);
         hideMessages();
     }
 });
+
+// Display list of selected files
+function displayFileList(files) {
+    const fileList = document.getElementById('fileList');
+    fileList.innerHTML = '';
+    
+    if (files.length === 1) {
+        fileName.textContent = `Selected: ${files[0].name}`;
+        fileName.style.display = 'block';
+        fileList.style.display = 'none';
+    } else {
+        fileName.textContent = `Selected: ${files.length} files`;
+        fileName.style.display = 'block';
+        fileList.style.display = 'block';
+        
+        files.forEach((file, index) => {
+            const fileItem = document.createElement('div');
+            fileItem.className = 'file-item';
+            fileItem.innerHTML = `
+                <span class="file-item-name">${file.name}</span>
+                <span class="file-item-size">(${(file.size / 1024).toFixed(2)} KB)</span>
+            `;
+            fileList.appendChild(fileItem);
+        });
+    }
+}
 
 // Drag and drop functionality
 dropZone.addEventListener('dragover', (e) => {
@@ -61,64 +86,25 @@ dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
     
-    const file = e.dataTransfer.files[0];
-    if (file && file.type === 'text/csv' || file.name.endsWith('.csv')) {
-        csvFileInput.files = e.dataTransfer.files;
-        fileName.textContent = `Selected: ${file.name}`;
-        fileName.style.display = 'block';
+    const files = Array.from(e.dataTransfer.files).filter(file => 
+        file.name.endsWith('.csv') || 
+        file.name.endsWith('.xlsx') || 
+        file.name.endsWith('.xls') || 
+        file.name.endsWith('.tsv') ||
+        file.type === 'text/csv' ||
+        file.type === 'application/vnd.ms-excel' ||
+        file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    );
+    
+    if (files.length > 0) {
+        // Create a new FileList-like object
+        const dataTransfer = new DataTransfer();
+        files.forEach(file => dataTransfer.items.add(file));
+        csvFileInput.files = dataTransfer.files;
+        displayFileList(files);
         hideMessages();
     } else {
-        showError('Please upload a valid CSV file.');
-    }
-});
-
-// Form submission
-uploadForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const file = csvFileInput.files[0];
-    if (!file) {
-        showError('Please select a CSV file first.');
-        return;
-    }
-    
-    // Validate file type
-    if (!file.name.endsWith('.csv') && file.type !== 'text/csv') {
-        showError('Please upload a valid CSV file.');
-        return;
-    }
-    
-    hideMessages();
-    setLoadingState(true);
-    
-    try {
-        const formData = new FormData();
-        formData.append('csvFile', file);
-        formData.append('formatPrompt', formatPrompt.value.trim());
-        
-        const response = await fetch('/api/convert', {
-            method: 'POST',
-            body: formData
-        });
-        
-        if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to convert file' }));
-            throw new Error(errorData.error || 'Failed to convert CSV to PDF');
-        }
-        
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        
-        downloadLink.href = url;
-        downloadLink.download = file.name.replace('.csv', '.pdf');
-        
-        showSuccess();
-        resetForm();
-        
-    } catch (error) {
-        showError(error.message || 'An error occurred while converting the file. Please try again.');
-    } finally {
-        setLoadingState(false);
+        showError('Please upload valid CSV/Excel files.');
     }
 });
 
@@ -152,6 +138,8 @@ function resetForm() {
     fileName.textContent = '';
     fileName.style.display = 'none';
     previewBox.style.display = 'none';
+    document.getElementById('fileList').innerHTML = '';
+    document.getElementById('fileList').style.display = 'none';
 }
 
 // Parse formatting prompt (client-side version matching server logic)
@@ -435,14 +423,14 @@ darkModeToggle.addEventListener('click', () => {
     darkModeToggle.textContent = isDark ? '☀️' : '🌙';
 });
 
-// CSV Preview and Parsing
+// CSV Preview and Parsing (for first file only)
 csvFileInput.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        fileName.textContent = `Selected: ${file.name}`;
-        fileName.style.display = 'block';
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+        displayFileList(files);
         hideMessages();
-        await loadCSVPreview(file);
+        // Preview only the first file
+        await loadCSVPreview(files[0]);
     }
 });
 
@@ -843,13 +831,13 @@ function renderHistory() {
 
 renderHistory();
 
-// Enhanced Form Submission
+// Enhanced Form Submission (with multiple file support)
 uploadForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     
-    const file = csvFileInput.files[0];
-    if (!file) {
-        showError('Please select a CSV file first.');
+    const files = Array.from(csvFileInput.files);
+    if (files.length === 0) {
+        showError('Please select at least one CSV/Excel file first.');
         return;
     }
     
@@ -859,7 +847,12 @@ uploadForm.addEventListener('submit', async (e) => {
     
     try {
         const formData = new FormData();
-        formData.append('csvFile', file);
+        
+        // Append all files
+        files.forEach((file, index) => {
+            formData.append(`csvFile${index}`, file);
+        });
+        formData.append('fileCount', files.length.toString());
         
         // Collect all options
         const options = {
@@ -885,7 +878,7 @@ uploadForm.addEventListener('submit', async (e) => {
         updateProgress(70);
         
         if (!response.ok) {
-            const errorData = await response.json().catch(() => ({ error: 'Failed to convert file' }));
+            const errorData = await response.json().catch(() => ({ error: 'Failed to convert files' }));
             throw new Error(errorData.error || 'Failed to convert CSV to PDF');
         }
         
@@ -895,18 +888,22 @@ uploadForm.addEventListener('submit', async (e) => {
         const url = window.URL.createObjectURL(blob);
         
         downloadLink.href = url;
-        downloadLink.download = file.name.replace(/\.(csv|tsv)$/i, '.pdf');
+        // Generate a combined filename
+        const baseName = files.length === 1 
+            ? files[0].name.replace(/\.(csv|tsv|xlsx|xls)$/i, '')
+            : `combined_${files.length}_files`;
+        downloadLink.download = `${baseName}.pdf`;
         
         updateProgress(100);
         showSuccess();
-        addToHistory(file.name);
+        files.forEach(file => addToHistory(file.name));
         
         setTimeout(() => {
             document.getElementById('progressBar').style.display = 'none';
         }, 2000);
         
     } catch (error) {
-        showError(error.message || 'An error occurred while converting the file. Please try again.');
+        showError(error.message || 'An error occurred while converting the files. Please try again.');
         document.getElementById('progressBar').style.display = 'none';
     } finally {
         setLoadingState(false);
